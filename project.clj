@@ -10,6 +10,7 @@
                  [org.vladimir/dao-lib "0.1.0"]
                  [org.vladimir/ajax-lib "0.1.0"]
                  [org.vladimir/utils-lib "0.1.0"]
+                 [org.vladimir/common-middle "0.1.0"]
                  ]
   :source-paths ["src/clj"])
 
