@@ -10,7 +10,7 @@
             [common-middle.request-urls :as rurls]))
 
 (defn get-allowed-actions
-  ""
+  "Get allowed actions for logged in user"
   [request]
   (let [cookie-string (:cookie request)
         session-uuid (ssn/get-cookie
@@ -54,7 +54,7 @@
  )
 
 (defn action-allowed?
-  ""
+  "Check if action is allowed to user"
   [request
    request-body
    allow-action-routing]
@@ -140,7 +140,7 @@
     @allowed))
 
 (defn get-allowed-actions-response
-  ""
+  "Get allowed actions for logged in user response"
   [request]
   (if-let [allowed-actions (get-allowed-actions
                              request)]
@@ -155,7 +155,7 @@
  )
 
 (defn not-found
-  ""
+  "If response-routing is nil return 404 not found"
   [response-routing]
   (if response-routing
     response-routing
@@ -171,9 +171,11 @@
    & [response-routing
       allow-action-routing
       response-routing-not-logged-in]]
-  (if-let [body (:body request)]
-    (if (< (read-string
-             (:content-length request))
+  (if-let [request-ws (:websocket request)]
+    (if (< (get-in
+             request
+             [:websocket
+              :websocket-message-length])
            300)
       (println
         (str
@@ -182,15 +184,32 @@
       (println
         (str
           "\n"
-          (dissoc
+          (update-in
             request
-            :body))
+            [:websocket]
+            dissoc
+            :websocket-message))
        ))
-    (println
-      (str
-        "\n"
-        request))
-   )
+    (if-let [body (:body request)]
+      (if (< (read-string
+               (:content-length request))
+             300)
+        (println
+          (str
+            "\n"
+            request))
+        (println
+          (str
+            "\n"
+            (dissoc
+              request
+              :body))
+         ))
+      (println
+        (str
+          "\n"
+          request))
+     ))
   (let [{request-uri :request-uri
          request-method :request-method} request]
     (if (ssn/am-i-logged-in-fn request)
