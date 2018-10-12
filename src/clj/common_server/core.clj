@@ -1,6 +1,6 @@
 (ns common-server.core
   (:require [session-lib.core :as ssn]
-            [mongo-lib.core :as mon]
+            [db-lib.core :as db]
             [language-lib.core :as lang]
             [utils-lib.core :refer [parse-body]]
             [dao-lib.core :as dao]
@@ -15,7 +15,7 @@
   (let [cookie-string (:cookie request)
         session-uuid (ssn/get-cookie
                        cookie-string
-                       :long-session)
+                       :long_session)
         [session-uuid
          session-collection] (if-not session-uuid
                                [(ssn/get-cookie
@@ -23,19 +23,19 @@
                                   :session)
                                 "session"]
                                [session-uuid
-                                "long-session"])]
+                                "long_session"])]
     (when-let [session-uuid session-uuid]
-      (when-let [session-obj (mon/mongodb-find-one
+      (when-let [session-obj (db/find-one-by-filter
                                session-collection
                                {:uuid session-uuid})]
         (let [user-id (:user-id session-obj)]
-          (when-let [user (mon/mongodb-find-by-id
+          (when-let [user (db/find-by-id
                             "user"
                             user-id)]
             (let [roles (:roles user)
                   allowed-functionalities (atom #{})]
               (doseq [role-id roles]
-                (when-let [role (mon/mongodb-find-by-id
+                (when-let [role (db/find-by-id
                                   "role"
                                   role-id)]
                   (swap!
@@ -282,7 +282,9 @@
       (cond
         (= request-method
            "OPTIONS")
-          {:status (stc/ok)}
+          {:status (stc/ok)
+           :headers {(eh/content-type) (mt/text-plain)}
+           :body (str {:status "success"})}
         (= request-method
            "POST")
           (cond
@@ -296,16 +298,16 @@
                rurls/sign-up-url)
               (try
                 (let [request-body (parse-body request)]
-                  (mon/mongodb-insert-one
+                  (db/insert-one
                     (:entity-type request-body)
                     (:entity request-body))
-                  (let [{_id :_id} (mon/mongodb-find-one
+                  (let [{_id :_id} (db/find-one-by-filter
                                      (:entity-type request-body)
                                      (:entity request-body))]
-                    (mon/mongodb-insert-one
+                    (db/insert-one
                       "preferences"
                       {:user-id _id
-                       :language "english"
+                       :language :english
                        :language-name "English"}))
                   {:status (stc/ok)
                    :headers {(eh/content-type) (mt/text-plain)}
