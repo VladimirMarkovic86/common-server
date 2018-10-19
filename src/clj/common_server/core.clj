@@ -1,6 +1,6 @@
 (ns common-server.core
   (:require [session-lib.core :as ssn]
-            [db-lib.core :as db]
+            [mongo-lib.core :as mon]
             [language-lib.core :as lang]
             [utils-lib.core :refer [parse-body]]
             [dao-lib.core :as dao]
@@ -15,7 +15,7 @@
   (let [cookie-string (:cookie request)
         session-uuid (ssn/get-cookie
                        cookie-string
-                       :long_session)
+                       :long-session)
         [session-uuid
          session-collection] (if-not session-uuid
                                [(ssn/get-cookie
@@ -23,19 +23,19 @@
                                   :session)
                                 "session"]
                                [session-uuid
-                                "long_session"])]
+                                "long-session"])]
     (when-let [session-uuid session-uuid]
-      (when-let [session-obj (db/find-one-by-filter
+      (when-let [session-obj (mon/mongodb-find-one
                                session-collection
                                {:uuid session-uuid})]
         (let [user-id (:user-id session-obj)]
-          (when-let [user (db/find-by-id
+          (when-let [user (mon/mongodb-find-by-id
                             "user"
                             user-id)]
             (let [roles (:roles user)
                   allowed-functionalities (atom #{})]
               (doseq [role-id roles]
-                (when-let [role (db/find-by-id
+                (when-let [role (mon/mongodb-find-by-id
                                   "role"
                                   role-id)]
                   (swap!
@@ -298,13 +298,13 @@
                rurls/sign-up-url)
               (try
                 (let [request-body (parse-body request)]
-                  (db/insert-one
+                  (mon/mongodb-insert-one
                     (:entity-type request-body)
                     (:entity request-body))
-                  (let [{_id :_id} (db/find-one-by-filter
+                  (let [{_id :_id} (mon/mongodb-find-one
                                      (:entity-type request-body)
                                      (:entity request-body))]
-                    (db/insert-one
+                    (mon/mongodb-insert-one
                       "preferences"
                       {:user-id _id
                        :language :english
