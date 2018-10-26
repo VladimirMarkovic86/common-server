@@ -53,6 +53,10 @@
      ))
  )
 
+(def get-allowed-actions-memo
+     (memoize
+       get-allowed-actions))
+
 (defn action-allowed?
   "Check if action is allowed to user"
   [request
@@ -60,7 +64,7 @@
    allow-action-routing]
   (let [allowed (atom false)
         execute-functionality (atom nil)
-        allowed-functionalities (get-allowed-actions
+        allowed-functionalities (get-allowed-actions-memo
                                   request)
         {request-uri :request-uri
          request-method :request-method} request]
@@ -139,10 +143,14 @@
       (reset! allowed true))
     @allowed))
 
+(def action-allowed?-memo
+     (memoize
+       action-allowed?))
+
 (defn get-allowed-actions-response
   "Get allowed actions for logged in user response"
   [request]
-  (if-let [allowed-actions (get-allowed-actions
+  (if-let [allowed-actions (get-allowed-actions-memo
                              request)]
     {:status (stc/ok)
      :headers {(eh/content-type) (mt/text-plain)}
@@ -213,7 +221,7 @@
   (let [{request-uri :request-uri
          request-method :request-method} request]
     (if (ssn/am-i-logged-in-fn request)
-      (if (action-allowed?
+      (if (action-allowed?-memo
             request
             (parse-body request)
             allow-action-routing)
