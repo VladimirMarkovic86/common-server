@@ -11,7 +11,7 @@ This project is ment to be used only with common-middle (where are defined URLs 
 You can use this project as dependencie in clojure projects by listing it in project.clj
 
 ```
-[org.clojars.vladimirmarkovic/common-server "0.3.0"]
+[org.clojars.vladimirmarkovic86/common-server "0.3.0"]
 ```
 
 ## Authors
