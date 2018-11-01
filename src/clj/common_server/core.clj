@@ -315,7 +315,7 @@
                     (mon/mongodb-insert-one
                       "preferences"
                       {:user-id _id
-                       :language :english
+                       :language "english"
                        :language-name "English"}))
                   {:status (stc/ok)
                    :headers {(eh/content-type) (mt/text-plain)}
