@@ -265,7 +265,9 @@
                          request)
                      :else
                        (not-found
-                         response-routing))
+                         (response-routing
+                           request))
+                        )
                  (= request-method
                     "DELETE")
                    (cond
@@ -274,10 +276,14 @@
                        (dao/delete-entity (parse-body request))
                      :else
                        (not-found
-                         response-routing))
+                         (response-routing
+                           request))
+                        )
                  :else
                    (not-found
-                     response-routing))]
+                     (response-routing
+                       request))
+                    )]
           (update-in
             response
             [:headers]
