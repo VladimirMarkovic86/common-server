@@ -66,6 +66,12 @@
         execute-functionality (atom nil)
         allowed-functionalities (get-allowed-actions-memo
                                   request)
+        allow-action-routing (if (and allow-action-routing
+                                      (fn?
+                                        allow-action-routing))
+                               allow-action-routing
+                               (fn [param]
+                                 false))
         {request-uri :request-uri
          request-method :request-method} request]
     (cond
@@ -118,7 +124,9 @@
           :else
             (reset!
               allowed
-              allow-action-routing))
+              (allow-action-routing
+                request))
+         )
       (= request-method
          "DELETE")
         (cond
@@ -132,11 +140,15 @@
           :else
             (reset!
               allowed
-              allow-action-routing))
+              (allow-action-routing
+                request))
+         )
       :else
         (reset!
           allowed
-          allow-action-routing))
+          (allow-action-routing
+            request))
+     )
     (when (contains?
             allowed-functionalities
             @execute-functionality)
@@ -164,9 +176,13 @@
 
 (defn not-found
   "If response-routing is nil return 404 not found"
-  [response-routing]
-  (if response-routing
-    response-routing
+  [response-routing
+   request]
+  (if (and response-routing
+           (fn?
+             response-routing))
+    (response-routing
+      request)
     {:status (stc/not-found)
      :headers {(eh/content-type) (mt/text-plain)}
      :body (str {:status "error"
@@ -265,9 +281,8 @@
                          request)
                      :else
                        (not-found
-                         (response-routing
-                           request))
-                        )
+                         response-routing
+                         request))
                  (= request-method
                     "DELETE")
                    (cond
@@ -276,14 +291,12 @@
                        (dao/delete-entity (parse-body request))
                      :else
                        (not-found
-                         (response-routing
-                           request))
-                        )
+                         response-routing
+                         request))
                  :else
                    (not-found
-                     (response-routing
-                       request))
-                    )]
+                     response-routing
+                     request))]
           (update-in
             response
             [:headers]
@@ -340,10 +353,12 @@
               (lang/get-labels request)
             :else
               (not-found
-                response-routing-not-logged-in))
+                response-routing-not-logged-in
+                request))
         :else
           (not-found
-            response-routing-not-logged-in))
+            response-routing-not-logged-in
+            request))
      ))
  )
 
