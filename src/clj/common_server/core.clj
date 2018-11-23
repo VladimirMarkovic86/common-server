@@ -7,7 +7,8 @@
             [ajax-lib.http.entity-header :as eh]
             [ajax-lib.http.mime-type :as mt]
             [ajax-lib.http.status-code :as stc]
-            [common-middle.request-urls :as rurls]))
+            [common-middle.request-urls :as rurls]
+            [ajax-lib.http.response-header :as rsh]))
 
 (defn get-allowed-actions
   "Get allowed actions for logged in user"
@@ -241,9 +242,9 @@
             request
             (parse-body request)
             allow-action-routing)
-        (let [[cookie-key
-               cookie-value] (ssn/refresh-session
-                               request)
+        (let [[cookie-value
+               visible-cookie-value] (ssn/refresh-session
+                                       request)
               response
                (cond
                  (= request-method
@@ -297,12 +298,18 @@
                    (not-found
                      response-routing
                      request))]
-          (update-in
+          (if (contains?
+                (:headers response)
+                (rsh/set-cookie))
             response
-            [:headers]
-            assoc
-            cookie-key
-            cookie-value))
+            (update-in
+              response
+              [:headers]
+              assoc
+              (rsh/set-cookie)
+              [cookie-value
+               visible-cookie-value]))
+         )
         {:status (stc/unauthorized)
          :headers {(eh/content-type) (mt/text-plain)}
          :body (str {:status "success"})})
