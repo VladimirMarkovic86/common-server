@@ -347,11 +347,13 @@
                    :headers {(eh/content-type) (mt/text-plain)}
                    :body (str {:status "success"})})
                 (catch Exception ex
-                 (println (.getMessage ex))
-                 {:status (stc/internal-server-error)
-                  :headers {(eh/content-type) (mt/text-plain)}
-                  :body (str {:status "error"})})
-               )
+                  (println (.getMessage ex))
+                  {:status (stc/internal-server-error)
+                   :headers {(eh/content-type) (mt/text-plain)}
+                   :body (str
+                           {:status "error"
+                            :message (.getMessage ex)})}
+                 ))
             (= request-uri
                rurls/am-i-logged-in-url)
               (ssn/am-i-logged-in request)
