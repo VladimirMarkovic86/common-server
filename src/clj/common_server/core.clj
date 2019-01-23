@@ -327,7 +327,8 @@
               (ssn/login-authentication
                 (parse-body
                   request)
-                (:user-agent request))
+                (:user-agent request)
+                (:accept-language request))
             (= request-uri
                rurls/sign-up-url)
               (try
