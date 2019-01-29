@@ -8,6 +8,11 @@
             [ajax-lib.http.mime-type :as mt]
             [ajax-lib.http.status-code :as stc]
             [common-middle.request-urls :as rurls]
+            [common-middle.collection-names :refer [user-cname
+                                                    role-cname
+                                                    chat-cname]]
+            [common-middle.functionalities :as fns]
+            [common-middle.role-names :refer [chat-rname]]
             [ajax-lib.http.response-header :as rsh]))
 
 (defn get-allowed-actions
@@ -31,13 +36,13 @@
                                {:uuid session-uuid})]
         (let [user-id (:user-id session-obj)]
           (when-let [user (mon/mongodb-find-by-id
-                            "user"
+                            user-cname
                             user-id)]
             (let [roles (:roles user)
                   allowed-functionalities (atom #{})]
               (doseq [role-id roles]
                 (when-let [role (mon/mongodb-find-by-id
-                                  "role"
+                                  role-cname
                                   role-id)]
                   (swap!
                     allowed-functionalities
@@ -122,6 +127,21 @@
           (= request-uri
              rurls/get-allowed-actions-url)
             (reset! allowed true)
+          (= request-uri
+             rurls/get-chat-users-url)
+            (reset!
+              execute-functionality
+              fns/chat)
+          (= request-uri
+             rurls/get-chat-history-url)
+            (reset!
+              execute-functionality
+              fns/chat)
+          (= request-uri
+             rurls/send-chat-message-url)
+            (reset!
+              execute-functionality
+              fns/chat)
           :else
             (reset!
               allowed
@@ -173,6 +193,90 @@
     {:status (stc/ok)
      :headers {(eh/content-type) (mt/text-plain)}
      :body (str {:status "error"})})
+ )
+
+(defn get-chat-users
+  "Get chat users"
+  []
+  (let [all-users (mon/mongodb-find
+                    user-cname)
+        chat-role-doc (mon/mongodb-find-one
+                        role-cname
+                        {:role-name chat-rname})
+        chat-users (atom [])]
+    (doseq [{roles :roles
+             username :username} all-users]
+      (let [roles (into
+                    #{}
+                    roles)
+            chat-role-string-id (.toString
+                                  (:_id chat-role-doc))]
+        (when (contains?
+                roles
+                chat-role-string-id)
+          (swap!
+            chat-users
+            conj
+            {:username username}))
+       ))
+    {:status (stc/ok)
+     :headers {(eh/content-type) (mt/text-plain)}
+     :body (str {:status "success"
+                 :data @chat-users})})
+ )
+
+(defn get-chat-history
+  "Get chat history for particular users"
+  [request-body]
+  (let [db-object (mon/mongodb-find-one
+                    chat-cname
+                    {:usernames {"$all" request-body}}
+                    {:messages 1
+                     :_id 0})]
+    {:status (stc/ok)
+     :headers {(eh/content-type) (mt/text-plain)}
+     :body (str
+             {:status "success"
+              :data (:messages db-object)})}
+   ))
+
+(defn send-chat-message
+  "Send chat message to selected user"
+  [{usernames :usernames
+    message :message}]
+  (try
+    (let [message (assoc
+                    message
+                    :sent-at
+                    (java.util.Date.))
+          mongo-result (mon/mongodb-update-one
+                         chat-cname
+                         {:usernames {:$all usernames}}
+                         {:$addToSet {:messages message}})]
+      (let [matched-count (.getMatchedCount
+                            mongo-result)
+            modified-count (.getModifiedCount
+                             mongo-result)]
+        (when (= modified-count
+                 matched-count
+                 0)
+          (mon/mongodb-insert-one
+            chat-cname
+            {:usernames usernames
+             :messages [message]})
+         ))
+      {:status (stc/ok)
+       :headers {(eh/content-type) (mt/text-plain)}
+       :body (str
+               {:status "success"})})
+    (catch Exception ex
+      (println (.getMessage ex))
+      {:status (stc/internal-server-error)
+       :headers {(eh/content-type) (mt/text-plain)}
+       :body (str
+               {:status "error"
+                :message (.getMessage ex)})}
+     ))
  )
 
 (defn not-found
@@ -280,6 +384,19 @@
                         rurls/get-allowed-actions-url)
                        (get-allowed-actions-response
                          request)
+                     (= request-uri
+                        rurls/get-chat-users-url)
+                       (get-chat-users)
+                     (= request-uri
+                        rurls/get-chat-history-url)
+                       (get-chat-history
+                         (parse-body
+                           request))
+                     (= request-uri
+                        rurls/send-chat-message-url)
+                       (send-chat-message
+                         (parse-body
+                           request))
                      :else
                        (not-found
                          response-routing
