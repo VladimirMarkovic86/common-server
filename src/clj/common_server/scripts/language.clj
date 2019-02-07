@@ -112,5 +112,9 @@
      { :code 67 :english "Send" :serbian "Пошаљи" }
      { :code 68 :english "Chat" :serbian "Ћаскање" }
 		   { :code 69 :english "Refresh" :serbian "Освежи" }
+		   { :code 70 :english "Error" :serbian "Грешка" }
+		   { :code 71
+		     :english "Username or e-mail alredy exists."
+		     :serbian "Корисничко име или е-пошта већ постоји." }
      ]))
 
