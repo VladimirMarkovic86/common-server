@@ -7,7 +7,10 @@
             [ajax-lib.http.entity-header :as eh]
             [ajax-lib.http.mime-type :as mt]
             [ajax-lib.http.status-code :as stc]
+            [clojure.set :as cset]
+            [clojure.string :as cstring]
             [common-middle.request-urls :as rurls]
+            [common-middle.ws-request-actions :as wsra]
             [common-middle.collection-names :refer [user-cname
                                                     role-cname
                                                     chat-cname]]
@@ -82,6 +85,16 @@
          request-method :request-method} request]
     (cond
       (= request-method
+         "ws GET")
+        (cond
+          (= request-uri
+             rurls/chat-url)
+            (reset!
+              execute-functionality
+              fns/chat)
+          :else
+            false)
+      (= request-method
          "POST")
         (cond
           (= request-uri
@@ -129,16 +142,6 @@
             (reset! allowed true)
           (= request-uri
              rurls/get-chat-users-url)
-            (reset!
-              execute-functionality
-              fns/chat)
-          (= request-uri
-             rurls/get-chat-history-url)
-            (reset!
-              execute-functionality
-              fns/chat)
-          (= request-uri
-             rurls/send-chat-message-url)
             (reset!
               execute-functionality
               fns/chat)
@@ -227,21 +230,16 @@
 
 (defn get-chat-history
   "Get chat history for particular users"
-  [request-body]
+  [usernames]
   (let [db-object (mon/mongodb-find-one
                     chat-cname
-                    {:usernames {"$all" request-body}}
+                    {:usernames {:$all usernames}}
                     {:messages 1
                      :_id 0})]
-    {:status (stc/ok)
-     :headers {(eh/content-type) (mt/text-plain)}
-     :body (str
-             {:status "success"
-              :data (:messages db-object)})}
-   ))
+    db-object))
 
-(defn send-chat-message
-  "Send chat message to selected user"
+(defn save-chat-message
+  "Save chat message to database"
   [{usernames :usernames
     message :message}]
   (try
@@ -265,19 +263,146 @@
             {:usernames usernames
              :messages [message]})
          ))
-      {:status (stc/ok)
-       :headers {(eh/content-type) (mt/text-plain)}
-       :body (str
-               {:status "success"})})
+     )
     (catch Exception ex
       (println (.getMessage ex))
-      {:status (stc/internal-server-error)
-       :headers {(eh/content-type) (mt/text-plain)}
-       :body (str
-               {:status "error"
-                :message (.getMessage ex)})}
      ))
  )
+
+(def chat-websocket-set-a
+     (atom
+       (sorted-set-by
+         (fn [{username1 :username}
+              {username2 :username}]
+              (compare
+                username1
+                username2))
+        ))
+ )
+
+(defn remove-websocket-from-set
+  "Removes websocket for particular username from set"
+  [username]
+  (let [new-chat-websocket-set-a (cset/select
+                                   (fn [{username-set :username}]
+                                     (not= username-set
+                                           username))
+                                   @chat-websocket-set-a)]
+    (reset!
+      chat-websocket-set-a
+      new-chat-websocket-set-a))
+ )
+
+(defn get-websocket-output-fn
+  "Checks if there is open websocket for particular username
+   if there is websocket and it is open return websocket-output-fn
+   if there is websocket and it's closed or there is no websocket
+    for particular username return nil"
+  [username]
+  (let [websocket-output-fn-set (cset/select
+                                  (fn [{username-set :username}]
+                                    (= username-set
+                                       username))
+                                  @chat-websocket-set-a)
+        websocket-output-fn-el (first
+                                 websocket-output-fn-set)
+        websocket-socket (:websocket-socket
+                              websocket-output-fn-el)
+        websocket-output-fn (:websocket-output-fn
+                              websocket-output-fn-el)]
+    (when (not
+            (nil?
+              websocket-socket))
+      (when (.isClosed
+              websocket-socket)
+        (remove-websocket-from-set
+          username))
+      (when (and (not
+                   (.isClosed
+                     websocket-socket))
+                 (fn?
+                   websocket-output-fn))
+        websocket-output-fn))
+   ))
+
+(defn chat-ws
+  "Connect to websocket"
+  [websocket]
+  (try
+    (let [{websocket-message :websocket-message
+           websocket-socket :websocket-socket
+           websocket-output-fn :websocket-output-fn} websocket
+          request-body (when-not (cstring/blank?
+                                   websocket-message)
+                         (read-string
+                           websocket-message))
+          action (:action request-body)]
+      (when (= action
+               wsra/establish-connection-action)
+        (remove-websocket-from-set
+          (:username request-body))
+        (swap!
+          chat-websocket-set-a
+          conj
+          {:username (:username request-body)
+           :websocket-socket websocket-socket
+           :websocket-output-fn websocket-output-fn}))
+      (when (= action
+               wsra/close-connection-action)
+        (remove-websocket-from-set
+          (:username request-body))
+        (websocket-output-fn
+          (str
+            {:status "close"})
+          -120))
+      (when (= action
+               wsra/send-chat-message-action)
+        (let [{usernames :usernames
+               message :message} request-body
+              sent-to (get
+                        usernames
+                        1)
+              sent-to-websocket-output-fn (get-websocket-output-fn
+                                            sent-to)]
+          (when (fn?
+                  sent-to-websocket-output-fn)
+            (sent-to-websocket-output-fn
+              (str
+                {:action wsra/receive-chat-message-action
+                 :message message}))
+           )
+          (save-chat-message
+            {:usernames usernames
+             :message message}))
+       )
+      (when (= action
+               wsra/get-chat-history-action)
+        (let [chat-history (get-chat-history
+                             (:usernames request-body))]
+          (websocket-output-fn
+            (str
+              {:action wsra/receive-chat-history-action
+               :message chat-history}))
+         ))
+      (when (= action
+               wsra/send-audio-chunk-action)
+        (let [{receiver-username :receiver
+               sender-username :sender
+               audio-chunk :audio-chunk} request-body
+              receiver-websocket-output-fn (get-websocket-output-fn
+                                             receiver-username)]
+          (when (fn?
+                  receiver-websocket-output-fn)
+            (receiver-websocket-output-fn
+              (str
+                {:action wsra/receive-audio-chunk-action
+                 :sender sender-username
+                 :audio-chunk audio-chunk}))
+           ))
+       ))
+    (catch Exception e
+      (println e))
+   ))
 
 (defn not-found
   "If response-routing is nil return 404 not found"
@@ -352,6 +477,17 @@
               response
                (cond
                  (= request-method
+                    "ws GET")
+                   (cond
+                     (= request-uri
+                        rurls/chat-url)
+                       (chat-ws
+                         (:websocket request))
+                     :else
+                       (not-found
+                         response-routing
+                         request))
+                 (= request-method
                     "POST")
                    (cond
                      (= request-uri
@@ -387,16 +523,6 @@
                      (= request-uri
                         rurls/get-chat-users-url)
                        (get-chat-users)
-                     (= request-uri
-                        rurls/get-chat-history-url)
-                       (get-chat-history
-                         (parse-body
-                           request))
-                     (= request-uri
-                        rurls/send-chat-message-url)
-                       (send-chat-message
-                         (parse-body
-                           request))
                      :else
                        (not-found
                          response-routing
