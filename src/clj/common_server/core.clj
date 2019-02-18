@@ -93,7 +93,11 @@
               execute-functionality
               fns/chat)
           :else
-            false)
+            (reset!
+              allowed
+              (allow-action-routing
+                request))
+         )
       (= request-method
          "POST")
         (cond
