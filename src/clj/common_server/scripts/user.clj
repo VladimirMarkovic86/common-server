@@ -27,10 +27,10 @@
                   (mon/mongodb-find-one
                     role-cname
                     {:role-name chat-rname}))
-        admin-encrypted-password (utils/encrypt-password
+        admin-encrypted-password (utils/sha256
                                    (or (System/getenv "ADMIN_USER_PASSWORD")
                                        "123"))
-        guest-encrypted-password (utils/encrypt-password
+        guest-encrypted-password (utils/sha256
                                    (or (System/getenv "GUEST_USER_PASSWORD")
                                        "123"))
         ]
