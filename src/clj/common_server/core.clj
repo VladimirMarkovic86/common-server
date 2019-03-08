@@ -2,11 +2,12 @@
   (:require [session-lib.core :as ssn]
             [mongo-lib.core :as mon]
             [language-lib.core :as lang]
-            [utils-lib.core :refer [parse-body]]
+            [utils-lib.core :as utils :refer [parse-body]]
             [dao-lib.core :as dao]
             [ajax-lib.http.entity-header :as eh]
             [ajax-lib.http.mime-type :as mt]
             [ajax-lib.http.status-code :as stc]
+            [ajax-lib.http.request-method :as rm]
             [clojure.set :as cset]
             [clojure.string :as cstring]
             [common-middle.request-urls :as rurls]
@@ -66,127 +67,6 @@
      (memoize
        get-allowed-actions))
 
-(defn action-allowed?
-  "Check if action is allowed to user"
-  [request
-   request-body
-   allow-action-routing]
-  (let [allowed (atom false)
-        execute-functionality (atom nil)
-        allowed-functionalities (get-allowed-actions-memo
-                                  request)
-        allow-action-routing (if (and allow-action-routing
-                                      (fn?
-                                        allow-action-routing))
-                               allow-action-routing
-                               (fn [param]
-                                 false))
-        {request-uri :request-uri
-         request-method :request-method} request]
-    (cond
-      (= request-method
-         "ws GET")
-        (cond
-          (= request-uri
-             rurls/chat-url)
-            (reset!
-              execute-functionality
-              fns/chat)
-          :else
-            (reset!
-              allowed
-              (allow-action-routing
-                request))
-         )
-      (= request-method
-         "POST")
-        (cond
-          (= request-uri
-             rurls/am-i-logged-in-url)
-            (reset! allowed true)
-          (= request-uri
-             rurls/get-entities-url)
-            (reset!
-              execute-functionality
-              (str
-                (:entity-type request-body)
-                "-read"))
-          (= request-uri
-             rurls/get-entity-url)
-            (reset!
-              execute-functionality
-              (str
-                (:entity-type request-body)
-                "-read"))
-          (= request-uri
-             rurls/update-entity-url)
-            (reset!
-              execute-functionality
-              (str
-                (:entity-type request-body)
-                "-update"))
-          (= request-uri
-             rurls/insert-entity-url)
-            (reset!
-              execute-functionality
-              (str
-                (:entity-type request-body)
-                "-create"))
-          (= request-uri
-             rurls/logout-url)
-            (reset! allowed true)
-          (= request-uri
-             rurls/get-labels-url)
-            (reset! allowed true)
-          (= request-uri
-             rurls/set-language-url)
-            (reset! allowed true)
-          (= request-uri
-             rurls/get-allowed-actions-url)
-            (reset! allowed true)
-          (= request-uri
-             rurls/get-chat-users-url)
-            (reset!
-              execute-functionality
-              fns/chat)
-          :else
-            (reset!
-              allowed
-              (allow-action-routing
-                request))
-         )
-      (= request-method
-         "DELETE")
-        (cond
-          (= request-uri
-             rurls/delete-entity-url)
-            (reset!
-              execute-functionality
-              (str
-                (:entity-type request-body)
-                "-delete"))
-          :else
-            (reset!
-              allowed
-              (allow-action-routing
-                request))
-         )
-      :else
-        (reset!
-          allowed
-          (allow-action-routing
-            request))
-     )
-    (when (contains?
-            allowed-functionalities
-            @execute-functionality)
-      (reset! allowed true))
-    @allowed))
-
-(def action-allowed?-memo
-     (memoize
-       action-allowed?))
-
 (defn get-allowed-actions-response
   "Get allowed actions for logged in user response"
   [request]
@@ -204,7 +84,7 @@
 
 (defn get-chat-users
   "Get chat users"
-  []
+  [request]
   (let [all-users (mon/mongodb-find
                     user-cname)
         chat-role-doc (mon/mongodb-find-one
@@ -331,9 +211,10 @@
 
 (defn chat-ws
   "Connect to websocket"
-  [websocket]
+  [request]
   (try
-    (let [{websocket-message :websocket-message
+    (let [websocket (:websocket request)
+          {websocket-message :websocket-message
            websocket-socket :websocket-socket
            websocket-output-fn :websocket-output-fn} websocket
           request-body (when-not (cstring/blank?
@@ -408,214 +289,220 @@
       (println e))
    ))
 
-(defn not-found
-  "If response-routing is nil return 404 not found"
-  [response-routing
-   request]
-  (if (and response-routing
-           (fn?
-             response-routing))
-    (response-routing
-      request)
-    {:status (stc/not-found)
-     :headers {(eh/content-type) (mt/text-plain)}
-     :body (str {:status "error"
-                 :error-message "404 not found"})})
+(defn sign-up
+  "Sign up new user with given data"
+  [request]
+  (try
+    (let [request-body (parse-body
+                         request)]
+      (mon/mongodb-insert-one
+        (:entity-type request-body)
+        (:entity request-body))
+      (let [{_id :_id} (mon/mongodb-find-one
+                         (:entity-type request-body)
+                         (:entity request-body))]
+        (mon/mongodb-insert-one
+          "preferences"
+          {:user-id _id
+           :language "english"
+           :language-name "English"}))
+      {:status (stc/ok)
+       :headers {(eh/content-type) (mt/text-plain)}
+       :body (str {:status "success"})})
+    (catch Exception ex
+      (println (.getMessage ex))
+      {:status (stc/internal-server-error)
+       :headers {(eh/content-type) (mt/text-plain)}
+       :body (str
+               {:status "error"
+                :message (.getMessage ex)})}
+     ))
  )
+
+(defn not-found
+  "If request is not found"
+  []
+  {:status (stc/not-found)
+   :headers {(eh/content-type) (mt/text-plain)}
+   :body (str {:status "error"
+               :error-message "404 not found"})})
+
+(defn not-authorized
+  "If reqeust is unauthorized"
+  []
+  {:status (stc/unauthorized)
+   :headers {(eh/content-type) (mt/text-plain)}
+   :body (str {:status "success"})})
+
+(defn response-to-options
+  "If request is for OPTIONS"
+  [request]
+  {:status (stc/ok)
+   :headers {(eh/content-type) (mt/text-plain)}
+   :body (str {:status "success"})})
+
+(def logged-in-routing-set
+  (atom
+    #{{:method rm/POST
+       :uri rurls/am-i-logged-in-url
+       :action ssn/am-i-logged-in}
+      {:method rm/POST
+       :uri rurls/get-entities-url
+       :authorization "-read"
+       :entity true
+       :action dao/get-entities}
+      {:method rm/POST
+       :uri rurls/get-entity-url
+       :authorization "-read"
+       :entity true
+       :action dao/get-entity}
+      {:method rm/POST
+       :uri rurls/update-entity-url
+       :authorization "-update"
+       :entity true
+       :action dao/update-entity}
+      {:method rm/POST
+       :uri rurls/insert-entity-url
+       :authorization "-create"
+       :entity true
+       :action dao/insert-entity}
+      {:method rm/POST
+       :uri rurls/logout-url
+       :action ssn/logout}
+      {:method rm/POST
+       :uri rurls/get-labels-url
+       :action lang/get-labels}
+      {:method rm/POST
+       :uri rurls/set-language-url
+       :action lang/set-language}
+      {:method rm/POST
+       :uri rurls/get-allowed-actions-url
+       :action get-allowed-actions-response}
+      {:method rm/POST
+       :uri rurls/get-chat-users-url
+       :authorization fns/chat
+       :action get-chat-users}
+      {:method rm/ws-GET
+       :uri rurls/chat-url
+       :authorization fns/chat
+       :action chat-ws}
+      {:method rm/DELETE
+       :uri rurls/delete-entity-url
+       :authorization "-delete"
+       :entity true
+       :action dao/delete-entity}}))
+
+(def logged-out-routing-set
+  (atom
+    #{{:method rm/OPTIONS
+       :uri "*"
+       :action response-to-options}
+      {:method rm/POST
+       :uri rurls/login-url
+       :action ssn/login-authentication}
+      {:method rm/POST
+       :uri rurls/sign-up-url
+       :action sign-up}
+      {:method rm/POST
+       :uri rurls/am-i-logged-in-url
+       :action ssn/am-i-logged-in}
+      {:method rm/POST
+       :uri rurls/get-labels-url
+       :action lang/get-labels}}))
+
+(defn conj-new-routes
+  "Adds new routes"
+  [routing-set
+   new-routes]
+  (swap!
+    routing-set
+    (fn [value-a
+         param]
+      (apply
+        conj
+        value-a
+        param))
+    new-routes))
+
+(defn add-new-routes
+  "Adds routes particular for this project"
+  [additional-logged-in-routing-set
+   additional-logged-out-routing-set]
+  (conj-new-routes
+    logged-in-routing-set
+    additional-logged-in-routing-set)
+  (conj-new-routes
+    logged-out-routing-set
+    additional-logged-out-routing-set))
+
+(defn routing-fn
+  "Routing function that selects right route"
+  [request]
+  (let [request-method (:request-method request)
+        request-uri (:request-uri request)
+        is-logged-in (ssn/am-i-logged-in-fn
+                       request)
+        routing-set (if is-logged-in
+                      @logged-in-routing-set
+                      @logged-out-routing-set)
+        request-action (clojure.set/select
+                         (fn [{method :method
+                               uri :uri}]
+                           (or (and (= request-method
+                                       method)
+                                    (= request-uri
+                                       uri))
+                               (= request-method
+                                  method
+                                  rm/OPTIONS))
+                          )
+                         routing-set)
+        requested-element (first
+                            request-action)]
+    (when-not (nil?
+                requested-element)
+      (let [authorized-actions (get-allowed-actions-memo
+                                 request)
+            requested-authorization (:authorization requested-element)
+            is-entity (:entity requested-element)
+            request-body (parse-body
+                           request)
+            entity-name (:entity-type request-body)
+            requested-authorization (if is-entity
+                                      (str
+                                        entity-name
+                                        requested-authorization)
+                                      requested-authorization)]
+        (if (or (nil?
+                  requested-authorization)
+                (contains?
+                  authorized-actions
+                  requested-authorization))
+          (let [action-fn (:action requested-element)
+                response (if (fn?
+                               action-fn)
+                           (action-fn
+                             request)
+                           action-fn)]
+            (if is-logged-in
+              (ssn/set-session-cookies
+                request
+                response)
+              response))
+          (not-authorized))
+       ))
+   ))
 
 (defn routing
   "Routing function"
-  [request
-   & [response-routing
-      allow-action-routing
-      response-routing-not-logged-in]]
-  (if-let [request-ws (:websocket request)]
-    (if (< (get-in
-             request
-             [:websocket
-              :websocket-message-length])
-           300)
-      (println
-        (str
-          "\n"
-          request))
-      (println
-        (str
-          "\n"
-          (update-in
-            request
-            [:websocket]
-            dissoc
-            :websocket-message))
-       ))
-    (if-let [body (:body request)]
-      (if (< (read-string
-               (:content-length request))
-             300)
-        (println
-          (str
-            "\n"
-            request))
-        (println
-          (str
-            "\n"
-            (dissoc
-              request
-              :body))
-         ))
-      (println
-        (str
-          "\n"
-          request))
-     ))
-  (let [{request-uri :request-uri
-         request-method :request-method} request]
-    (if (ssn/am-i-logged-in-fn request)
-      (if (action-allowed?-memo
-            request
-            (parse-body request)
-            allow-action-routing)
-        (let [[cookie-value
-               visible-cookie-value] (ssn/refresh-session
-                                       request)
-              response
-               (cond
-                 (= request-method
-                    "ws GET")
-                   (cond
-                     (= request-uri
-                        rurls/chat-url)
-                       (chat-ws
-                         (:websocket request))
-                     :else
-                       (not-found
-                         response-routing
-                         request))
-                 (= request-method
-                    "POST")
-                   (cond
-                     (= request-uri
-                        rurls/am-i-logged-in-url)
-                       (ssn/am-i-logged-in request)
-                     (= request-uri
-                        rurls/get-entities-url)
-                       (dao/get-entities (parse-body request))
-                     (= request-uri
-                        rurls/get-entity-url)
-                       (dao/get-entity (parse-body request))
-                     (= request-uri
-                        rurls/update-entity-url)
-                       (dao/update-entity (parse-body request))
-                     (= request-uri
-                        rurls/insert-entity-url)
-                       (dao/insert-entity (parse-body request))
-                     (= request-uri
-                        rurls/logout-url)
-                       (ssn/logout request)
-                     (= request-uri
-                        rurls/get-labels-url)
-                       (lang/get-labels request)
-                     (= request-uri
-                        rurls/set-language-url)
-                       (lang/set-language
-                         request
-                         (parse-body request))
-                     (= request-uri
-                        rurls/get-allowed-actions-url)
-                       (get-allowed-actions-response
-                         request)
-                     (= request-uri
-                        rurls/get-chat-users-url)
-                       (get-chat-users)
-                     :else
-                       (not-found
-                         response-routing
-                         request))
-                 (= request-method
-                    "DELETE")
-                   (cond
-                     (= request-uri
-                        rurls/delete-entity-url)
-                       (dao/delete-entity (parse-body request))
-                     :else
-                       (not-found
-                         response-routing
-                         request))
-                 :else
-                   (not-found
-                     response-routing
-                     request))]
-          (if (contains?
-                (:headers response)
-                (rsh/set-cookie))
-            response
-            (update-in
-              response
-              [:headers]
-              assoc
-              (rsh/set-cookie)
-              [cookie-value
-               visible-cookie-value]))
-         )
-        {:status (stc/unauthorized)
-         :headers {(eh/content-type) (mt/text-plain)}
-         :body (str {:status "success"})})
-      (cond
-        (= request-method
-           "OPTIONS")
-          {:status (stc/ok)
-           :headers {(eh/content-type) (mt/text-plain)}
-           :body (str {:status "success"})}
-        (= request-method
-           "POST")
-          (cond
-            (= request-uri
-               rurls/login-url)
-              (ssn/login-authentication
-                (parse-body
-                  request)
-                (:user-agent request)
-                (:accept-language request))
-            (= request-uri
-               rurls/sign-up-url)
-              (try
-                (let [request-body (parse-body request)]
-                  (mon/mongodb-insert-one
-                    (:entity-type request-body)
-                    (:entity request-body))
-                  (let [{_id :_id} (mon/mongodb-find-one
-                                     (:entity-type request-body)
-                                     (:entity request-body))]
-                    (mon/mongodb-insert-one
-                      "preferences"
-                      {:user-id _id
-                       :language "english"
-                       :language-name "English"}))
-                  {:status (stc/ok)
-                   :headers {(eh/content-type) (mt/text-plain)}
-                   :body (str {:status "success"})})
-                (catch Exception ex
-                  (println (.getMessage ex))
-                  {:status (stc/internal-server-error)
-                   :headers {(eh/content-type) (mt/text-plain)}
-                   :body (str
-                           {:status "error"
-                            :message (.getMessage ex)})}
-                 ))
-            (= request-uri
-               rurls/am-i-logged-in-url)
-              (ssn/am-i-logged-in request)
-            (= request-uri
-               rurls/get-labels-url)
-              (lang/get-labels request)
-            :else
-              (not-found
-                response-routing-not-logged-in
-                request))
-        :else
-          (not-found
-            response-routing-not-logged-in
-            request))
-     ))
+  [request]
+  (utils/print-request
+    request)
+  (let [response (routing-fn
+                   request)]
+    (if (nil?
+          response)
+      (not-found)
+      response))
  )
 
