@@ -2,7 +2,7 @@
   (:require [session-lib.core :as ssn]
             [mongo-lib.core :as mon]
             [language-lib.core :as lang]
-            [utils-lib.core :as utils :refer [parse-body]]
+            [utils-lib.core :as utils]
             [dao-lib.core :as dao]
             [ajax-lib.http.entity-header :as eh]
             [ajax-lib.http.mime-type :as mt]
@@ -73,13 +73,12 @@
   (if-let [allowed-actions (get-allowed-actions-memo
                              request)]
     {:status (stc/ok)
-     :headers {(eh/content-type) (mt/text-plain)}
-     :body (str
-             {:status "success"
-              :data allowed-actions})}
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"
+            :data allowed-actions}}
     {:status (stc/ok)
-     :headers {(eh/content-type) (mt/text-plain)}
-     :body (str {:status "error"})})
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "error"}})
  )
 
 (defn get-chat-users
@@ -107,10 +106,9 @@
             {:username username}))
        ))
     {:status (stc/ok)
-     :headers {(eh/content-type) (mt/text-plain)}
-     :body (str {:status "success"
-                 :data @chat-users})})
- )
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"
+            :data @chat-users}}))
 
 (defn get-chat-history
   "Get chat history for particular users"
@@ -293,7 +291,7 @@
   "Sign up new user with given data"
   [request]
   (try
-    (let [request-body (parse-body
+    (let [request-body (:body
                          request)]
       (mon/mongodb-insert-one
         (:entity-type request-body)
@@ -307,15 +305,14 @@
            :language "english"
            :language-name "English"}))
       {:status (stc/ok)
-       :headers {(eh/content-type) (mt/text-plain)}
-       :body (str {:status "success"})})
+       :headers {(eh/content-type) (mt/text-clojurescript)}
+       :body {:status "success"}})
     (catch Exception ex
       (println (.getMessage ex))
       {:status (stc/internal-server-error)
-       :headers {(eh/content-type) (mt/text-plain)}
-       :body (str
-               {:status "error"
-                :message (.getMessage ex)})}
+       :headers {(eh/content-type) (mt/text-clojurescript)}
+       :body {:status "error"
+              :message (.getMessage ex)}}
      ))
  )
 
@@ -323,23 +320,23 @@
   "If request is not found"
   []
   {:status (stc/not-found)
-   :headers {(eh/content-type) (mt/text-plain)}
-   :body (str {:status "error"
-               :error-message "404 not found"})})
+   :headers {(eh/content-type) (mt/text-clojurescript)}
+   :body {:status "error"
+          :error-message "404 not found"}})
 
 (defn not-authorized
   "If reqeust is unauthorized"
   []
   {:status (stc/unauthorized)
-   :headers {(eh/content-type) (mt/text-plain)}
-   :body (str {:status "success"})})
+   :headers {(eh/content-type) (mt/text-clojurescript)}
+   :body {:status "success"}})
 
 (defn response-to-options
   "If request is for OPTIONS"
   [request]
   {:status (stc/ok)
-   :headers {(eh/content-type) (mt/text-plain)}
-   :body (str {:status "success"})})
+   :headers {(eh/content-type) (mt/text-clojurescript)}
+   :body {:status "success"}})
 
 (def logged-in-routing-set
   (atom
@@ -465,7 +462,7 @@
                                  request)
             requested-authorization (:authorization requested-element)
             is-entity (:entity requested-element)
-            request-body (parse-body
+            request-body (:body
                            request)
             entity-name (:entity-type request-body)
             requested-authorization (if is-entity
@@ -493,10 +490,78 @@
        ))
    ))
 
+(defn print-request
+  "Prints request map"
+  [request]
+  (let [ws-content-length (get-in
+                            request
+                            [:websocket
+                             :websocket-message-length])
+        ws-content-length (if ws-content-length
+                            ws-content-length
+                            (when-let [websocket-message (get-in
+                                                           request
+                                                           [:websocket
+                                                            :websocket-message])]
+                              (count
+                                websocket-message))
+                           )
+        content-length (:content-length request)
+        content-length (if (and content-length
+                                (string?
+                                  content-length))
+                         (read-string
+                           content-length)
+                         (when-let [body (:body
+                                           request)]
+                           (count
+                             body))
+                        )
+        result (atom nil)]
+    (when (or (and ws-content-length
+                   (< ws-content-length
+                      300))
+              (and content-length
+                   (< content-length
+                      300))
+              (and (nil?
+                     ws-content-length)
+                   (nil?
+                     content-length))
+           )
+      (reset!
+        result
+        request))
+    (when (and ws-content-length
+               (<= 300
+                   ws-content-length))
+      (reset!
+        result
+        (update-in
+          request
+          [:websocket]
+          dissoc
+          :websocket-message))
+     )
+    (when (and content-length
+               (<= 300
+                   content-length))
+      (reset!
+        result
+        (dissoc
+          request
+          :body))
+     )
+   (println
+     (str
+       "\n"
+       @result))
+   @result))
+
 (defn routing
   "Routing function"
   [request]
-  (utils/print-request
+  (print-request
     request)
   (let [response (routing-fn
                    request)]
