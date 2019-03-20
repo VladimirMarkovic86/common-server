@@ -215,8 +215,12 @@
           {websocket-message :websocket-message
            websocket-socket :websocket-socket
            websocket-output-fn :websocket-output-fn} websocket
-          request-body (when-not (cstring/blank?
-                                   websocket-message)
+          request-body (when (and (string?
+                                    websocket-message)
+                                  (not
+                                    (cstring/blank?
+                                      websocket-message))
+                              )
                          (read-string
                            websocket-message))
           action (:action request-body)]
@@ -284,8 +288,11 @@
            ))
        ))
     (catch Exception e
-      (println e))
-   ))
+      (println
+        (.getMessage
+          e))
+     ))
+ )
 
 (defn sign-up
   "Sign up new user with given data"
@@ -312,9 +319,8 @@
       {:status (stc/internal-server-error)
        :headers {(eh/content-type) (mt/text-clojurescript)}
        :body {:status "error"
-              :message (.getMessage ex)}}
-     ))
- )
+              :message (.getMessage ex)}})
+   ))
 
 (defn not-found
   "If request is not found"
@@ -432,64 +438,6 @@
     logged-out-routing-set
     additional-logged-out-routing-set))
 
-(defn routing-fn
-  "Routing function that selects right route"
-  [request]
-  (let [request-method (:request-method request)
-        request-uri (:request-uri request)
-        is-logged-in (ssn/am-i-logged-in-fn
-                       request)
-        routing-set (if is-logged-in
-                      @logged-in-routing-set
-                      @logged-out-routing-set)
-        request-action (clojure.set/select
-                         (fn [{method :method
-                               uri :uri}]
-                           (or (and (= request-method
-                                       method)
-                                    (= request-uri
-                                       uri))
-                               (= request-method
-                                  method
-                                  rm/OPTIONS))
-                          )
-                         routing-set)
-        requested-element (first
-                            request-action)]
-    (when-not (nil?
-                requested-element)
-      (let [authorized-actions (get-allowed-actions-memo
-                                 request)
-            requested-authorization (:authorization requested-element)
-            is-entity (:entity requested-element)
-            request-body (:body
-                           request)
-            entity-name (:entity-type request-body)
-            requested-authorization (if is-entity
-                                      (str
-                                        entity-name
-                                        requested-authorization)
-                                      requested-authorization)]
-        (if (or (nil?
-                  requested-authorization)
-                (contains?
-                  authorized-actions
-                  requested-authorization))
-          (let [action-fn (:action requested-element)
-                response (if (fn?
-                               action-fn)
-                           (action-fn
-                             request)
-                           action-fn)]
-            (if is-logged-in
-              (ssn/set-session-cookies
-                request
-                response)
-              response))
-          (not-authorized))
-       ))
-   ))
-
 (defn print-request
   "Prints request map"
   [request]
@@ -557,6 +505,63 @@
        "\n"
        @result))
    @result))
+
+(defn routing-fn
+  "Routing function that selects right route"
+  [request]
+  (let [request-method (:request-method request)
+        request-uri (:request-uri request)
+        is-logged-in (ssn/am-i-logged-in-fn
+                       request)
+        routing-set (if is-logged-in
+                      @logged-in-routing-set
+                      @logged-out-routing-set)
+        request-action (clojure.set/select
+                         (fn [{method :method
+                               uri :uri}]
+                           (or (and (= request-method
+                                       method)
+                                    (= request-uri
+                                       uri))
+                               (= request-method
+                                  method
+                                  rm/OPTIONS))
+                          )
+                         routing-set)
+        requested-element (first
+                            request-action)]
+    (when-not (nil?
+                requested-element)
+      (let [authorized-actions (get-allowed-actions-memo
+                                 request)
+            requested-authorization (:authorization requested-element)
+            is-entity (:entity requested-element)
+            request-body (:body
+                           request)
+            requested-authorization (if is-entity
+                                      (str
+                                        (:entity-type request-body)
+                                        requested-authorization)
+                                      requested-authorization)]
+        (if (or (nil?
+                  requested-authorization)
+                (contains?
+                  authorized-actions
+                  requested-authorization))
+          (let [action-fn (:action requested-element)
+                response (if (fn?
+                               action-fn)
+                           (action-fn
+                             request)
+                           action-fn)]
+            (if is-logged-in
+              (ssn/set-session-cookies
+                request
+                response)
+              response))
+          (not-authorized))
+       ))
+   ))
 
 (defn routing
   "Routing function"
