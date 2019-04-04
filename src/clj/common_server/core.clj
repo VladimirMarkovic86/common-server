@@ -239,8 +239,7 @@
         (remove-websocket-from-set
           (:username request-body))
         (websocket-output-fn
-          (str
-            {:status "close"})
+          {:status "close"}
           -120))
       (when (= action
                wsra/send-chat-message-action)
@@ -254,9 +253,8 @@
           (when (fn?
                   sent-to-websocket-output-fn)
             (sent-to-websocket-output-fn
-              (str
-                {:action wsra/receive-chat-message-action
-                 :message message}))
+              {:action wsra/receive-chat-message-action
+               :message message})
            )
           (save-chat-message
             {:usernames usernames
@@ -267,9 +265,8 @@
         (let [chat-history (get-chat-history
                              (:usernames request-body))]
           (websocket-output-fn
-            (str
-              {:action wsra/receive-chat-history-action
-               :message chat-history}))
+            {:action wsra/receive-chat-history-action
+             :message chat-history})
          ))
       (when (= action
                wsra/send-audio-chunk-action)
@@ -281,12 +278,11 @@
           (when (fn?
                   receiver-websocket-output-fn)
             (receiver-websocket-output-fn
-              (str
-                {:action wsra/receive-audio-chunk-action
-                 :sender sender-username
-                 :audio-chunk audio-chunk}))
-           ))
-       ))
+              {:action wsra/receive-audio-chunk-action
+               :sender sender-username
+               :audio-chunk audio-chunk}))
+         ))
+     )
     (catch Exception e
       (println
         (.getMessage

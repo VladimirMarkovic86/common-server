@@ -553,7 +553,6 @@
  )
 
 (deftest test-sign-up
-  
   (testing "Test sign up"
     
     (let [password-123 "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
@@ -592,19 +591,24 @@
                                 {:entity-type "user"
                                  :entity new-user-same-username}})]
         (is
-          (and (= (:status signup-response)
-                  (stc/internal-server-error))
-               (= (get-in
-                    signup-response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (= (get-in
-                    signup-response
-                    [:body
-                     :status])
-                  "error")
-           )
+          (= (:status signup-response)
+             (stc/internal-server-error))
+         )
+        
+        (is
+          (= (get-in
+               signup-response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (get-in
+               signup-response
+               [:body
+                :status])
+             "error")
          )
        )
       
@@ -612,28 +616,32 @@
                               {:body
                                 {:entity-type "user"
                                  :entity new-user-same-email}})]
+        
         (is
-          (and (= (:status signup-response)
-                  (stc/internal-server-error))
-               (= (get-in
-                    signup-response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (= (get-in
-                    signup-response
-                    [:body
-                     :status])
-                  "error")
-           )
+          (= (:status signup-response)
+             (stc/internal-server-error))
+         )
+        
+        (is
+          (= (get-in
+               signup-response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (get-in
+               signup-response
+               [:body
+                :status])
+             "error")
          )
        )
       
      )
     
-   )
-  
- )
+   ))
 
 (deftest test-not-found
   (testing "Test not found"
@@ -645,9 +653,7 @@
           :body {:status "error"
                  :error-message "404 not found"}}))
      
-   )
-   
- )
+   ))
 
 (deftest test-not-authorized
   (testing "Test not authorized"
@@ -658,9 +664,7 @@
           :headers {(eh/content-type) (mt/text-clojurescript)}
           :body {:status "success"}}))
      
-   )
-   
- )
+   ))
 
 (deftest test-response-to-options
   (testing "Test response to options"
@@ -672,9 +676,7 @@
           :headers {(eh/content-type) (mt/text-clojurescript)}
           :body {:status "success"}}))
      
-   )
-   
- )
+   ))
 
 (deftest test-conj-new-routes
   (testing "Test conj new routes"
@@ -702,12 +704,9 @@
       
      )
      
-   )
-   
- )
+   ))
 
 (deftest test-add-new-routes
-
   (testing "Test add new routes"
     
     (let [test-request-method "TEST_REQUEST_METHOD"
@@ -727,28 +726,28 @@
            :action quasi-function}})
       
       (is
-        (and (= @logged-in-routing-set
-                (conj
-                  @logged-in-routing-set-copy
-                  {:method test-request-method
-                   :uri test-uri
-                   :action quasi-function}))
-             (= @logged-out-routing-set
-                (conj
-                  @logged-out-routing-set-copy
-                  {:method test-request-method
-                   :uri test-uri
-                   :action quasi-function}))
-         ))
+        (= @logged-in-routing-set
+           (conj
+             @logged-in-routing-set-copy
+             {:method test-request-method
+              :uri test-uri
+              :action quasi-function}))
+       )
+      
+      (is
+        (= @logged-out-routing-set
+           (conj
+             @logged-out-routing-set-copy
+             {:method test-request-method
+              :uri test-uri
+              :action quasi-function}))
+       )
       
      )
      
-   )
-   
- )
+   ))
 
 (deftest test-print-request
-  
   (testing "Test print request"
     
     (is
@@ -815,7 +814,6 @@
    ))
 
 (deftest test-routing
-  
   (testing "Test routing"
     
     (let [user-password "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"
@@ -863,13 +861,9 @@
           (= response
              {:status (stc/internal-server-error)
               :headers {(eh/content-type) (mt/text-clojurescript)}
-              :body {:status "success"
-                     :email "success"
-                     :password "success"
-                     :username "test-admin"
-                     :language "english"
-                     :language-name "English"}})
+              :body {:status "error"}})
          )
+        
        )
       
       (let [request {:request-method rm/POST
@@ -879,28 +873,38 @@
                             :password user-password}}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (:body response)
-                  {:status "success"
-                   :email "success"
-                   :password "success"
-                   :username "test-admin"
-                   :language "english"
-                   :language-name "English"}))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (:body response)
+             {:status "success"
+              :email "success"
+              :password "success"
+              :username "test-admin"
+              :language "english"
+              :language-name "English"})
          )
        )
       
@@ -908,13 +912,28 @@
                      :request-uri rurls/sign-up-url}
             response (routing
                        request)]
+        
         (is
-          (= response
-             {:status (stc/internal-server-error)
-              :headers {(eh/content-type) (mt/text-clojurescript)}
-              :body {:status "error"
-                     :message nil}})
+          (= (:status response)
+             (stc/internal-server-error))
          )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "error")
+         )
+        
        )
       
       (let [request {:request-method rm/POST
@@ -952,44 +971,62 @@
                      :request-uri rurls/am-i-logged-in-url}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/unauthorized))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (= (:body response)
-                  "It's not ok"))
+          (= (:status response)
+             (stc/unauthorized))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (:body response)
+             "It's not ok")
          )
        )
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/am-i-logged-in-url
-                     :cookie "session=test-uuid; session-visible=exists"}
+                     :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (:body response)
-                  {:status "It's ok"
-                   :username "test-admin"
-                   :language "english"
-                   :language-name "English"}))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (:body response)
+             {:status "It's ok"
+              :username "test-admin"
+              :language "english"
+              :language-name "English"})
          )
        )
       
@@ -997,37 +1034,55 @@
                      :request-uri rurls/get-labels-url}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success")
-               (= (get-in
-                    response
-                    [:body
-                     :language])
-                  "english")
-               (let [data (get-in
-                            response
-                            [:body
-                             :data])
-                     data-element (first
-                                    data)]
-                 (and (= (int
-                           (:code data-element))
-                         1)
-                      (= (:english data-element)
-                         "English translation"))
-                ))
+          (= (:status response)
+             (stc/ok))
          )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :language])
+             "english")
+         )
+        
+        (let [data (get-in
+                     response
+                     [:body
+                      :data])
+              data-element (first
+                             data)]
+          (is
+            (= (int
+                 (:code data-element))
+               1)
+           )
+          
+          (is
+            (= (:english data-element)
+               "English translation")
+           )
+          
+         )
+        
        )
       
       (let [request {:request-method rm/POST
@@ -1035,86 +1090,118 @@
                      :accept-language	"sr,en;q=0.5"}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success")
-               (= (get-in
-                    response
-                    [:body
-                     :language])
-                  "serbian")
-               (let [data (get-in
-                            response
-                            [:body
-                             :data])
-                     data-element (first
-                                    data)]
-                 (and (= (int
-                           (:code data-element))
-                         1)
-                      (= (:serbian data-element)
-                         "Српски превод"))
-                ))
+          (= (:status response)
+             (stc/ok))
          )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :language])
+             "serbian")
+         )
+        
+        (let [data (get-in
+                     response
+                     [:body
+                      :data])
+              data-element (first
+                             data)]
+          (is
+            (= (int
+                 (:code data-element))
+               1)
+           )
+          
+          (is
+            (= (:serbian data-element)
+               "Српски превод")
+           )
+          
+         )
+        
        )
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/get-entities-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :body {:entity-type "user"}}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
+         )
+        
+        (let [data (get-in
                      response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success")
-               (let [data (get-in
-                            response
-                            [:body
-                             :data])
-                     data-set (into
-                                #{}
-                                data)
-                     select-fn (fn [{username :username}]
-                                 (or (= username
-                                        "test-admin")
-                                     (= username
-                                        "test-guest")
-                                     (= username
-                                        "testsignupuserrequest"))
-                                )
-                     selected-set (cset/select
-                                    select-fn
-                                    data-set)]
-                 (= (count
-                      selected-set)
-                    3))
+                     [:body
+                      :data])
+              data-set (into
+                         #{}
+                         data)
+              select-fn (fn [{username :username}]
+                          (or (= username
+                                 "test-admin")
+                              (= username
+                                 "test-guest")
+                              (= username
+                                 "testsignupuserrequest"))
+                         )
+              selected-set (cset/select
+                             select-fn
+                             data-set)]
+          (is
+            (= (count
+                 selected-set)
+               3)
            )
          )
        )
@@ -1125,72 +1212,97 @@
             request {:request-method rm/POST
                      :request-uri rurls/get-entity-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :body {:entity-type "user"
                             :entity-filter {:_id (:_id new-user-from-db)}
                             :entity-projection [:username]
                             :projection-include true}}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
+         )
+        
+        (let [data (get-in
                      response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success")
-               (let [data (get-in
-                            response
-                            [:body
-                             :data])]
-                 (= (:username data)
-                    "testsignupuserrequest"))
+                     [:body
+                      :data])]
+          (is
+            (= (:username data)
+               "testsignupuserrequest")
            )
          )
+        
        )
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/get-entity-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :body {:entity-type "user"
                             :entity-filter {:_id ""}
                             :entity-projection [:username]
                             :projection-include true}}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/internal-server-error))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "Error"))
-          
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
          )
        )
       
@@ -1200,6 +1312,7 @@
             request {:request-method rm/POST
                      :request-uri rurls/update-entity-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :body {:entity-type "user"
                             :_id (:_id new-user-from-db)
                             :entity {:email "request345@345changed"}}}
@@ -1207,25 +1320,34 @@
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success"))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
          )
         
         (let [{username :username
@@ -1233,13 +1355,20 @@
                password :password} (mon/mongodb-find-by-id
                                      "user"
                                      (:_id new-user-from-db))]
+          
           (is
-            (and (= username
-                    "testsignupuserrequest")
-                 (= email
-                    "request345@345changed")
-                 (= password
-                    user-password))
+            (= username
+               "testsignupuserrequest")
+           )
+          
+          (is
+            (= email
+               "request345@345changed")
+           )
+          
+          (is
+            (= password
+               user-password)
            )
          )
         
@@ -1248,6 +1377,7 @@
       (let [request {:request-method rm/POST
                      :request-uri rurls/update-entity-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :body {:entity-type "user"
                             :_id ""
                             :entity {:email "request345@345changed"}}}
@@ -1255,30 +1385,42 @@
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/internal-server-error))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "Error")
-               (= (get-in
-                    response
-                    [:body
-                     :status-code])
-                  70))
+          (= (:status response)
+             (stc/internal-server-error))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "Error")
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status-code])
+             70)
          )
         
        )
@@ -1295,6 +1437,7 @@
             request {:request-method rm/POST
                      :request-uri rurls/insert-entity-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :body {:entity-type "user"
                             :entity {:username "insert-test-guest"
                                      :email "inserttest345@345"
@@ -1307,25 +1450,34 @@
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "Success"))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "Success")
          )
         
         (is
@@ -1345,27 +1497,37 @@
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/logout-url
-                     :cookie "session=logout-test-uuid; session-visible=exists"}
+                     :cookie "session=logout-test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"}
             response (routing
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-plain))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (:body response)
-                  "Bye bye"))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-plain))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (:body response)
+             "Bye bye")
          )
         
         (is
@@ -1379,7 +1541,8 @@
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/logout-url
-                     :cookie "session=logout-test-uuid; session-visible=exists"}
+                     :cookie "session=logout-test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"}
             response (routing
                        request)]
         
@@ -1395,107 +1558,115 @@
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/get-labels-url
-                     :cookie "session=test-uuid; session-visible=exists"}
+                     :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"}
             response (routing
                        request)]
+        
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success")
-               (= (get-in
-                    response
-                    [:body
-                     :language])
-                  "english")
-               (let [data (get-in
-                            response
-                            [:body
-                             :data])
-                     data-element (first
-                                    data)]
-                 (and (= (int
-                           (:code data-element))
-                         1)
-                      (= (:english data-element)
-                         "English translation"))
-                ))
+          (= (:status response)
+             (stc/ok))
          )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :language])
+             "english")
+         )
+        
+        (let [data (get-in
+                     response
+                     [:body
+                      :data])
+              data-element (first
+                             data)]
+          (is
+            (= (int
+                 (:code data-element))
+               1)
+           )
+          
+          (is
+            (= (:english data-element)
+               "English translation")
+           )
+
+         )
+        
        )
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/get-labels-url
                      :accept-language	"sr,en;q=0.5"
-                     :cookie "session=test-uuid; session-visible=exists"}
-            response (routing
-                       request)]
-        (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success")
-               (= (get-in
-                    response
-                    [:body
-                     :language])
-                  "serbian")
-               (let [data (get-in
-                            response
-                            [:body
-                             :data])
-                     data-element (first
-                                    data)]
-                 (and (= (int
-                           (:code data-element))
-                         1)
-                      (= (:serbian data-element)
-                         "Српски превод"))
-                ))
-         )
-       )
-      
-      (let [request {:request-method rm/POST
-                     :request-uri rurls/set-language-url
-                     :cookie "session=test-uuid; session-visible=exists"}
+                     :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"}
             response (routing
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/internal-server-error))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :language])
+             "serbian")
+         )
+        
+        (let [data (get-in
                      response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "Error"))
+                     [:body
+                      :data])
+              data-element (first
+                             data)]
+          (is
+            (= (int
+                 (:code data-element))
+               1)
+           )
+          
+          (is
+            (= (:serbian data-element)
+               "Српски превод")
+           )
+          
          )
         
        )
@@ -1503,31 +1674,81 @@
       (let [request {:request-method rm/POST
                      :request-uri rurls/set-language-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"}
+            response (routing
+                       request)]
+        
+        (is
+          (= (:status response)
+             (stc/internal-server-error))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "Error")
+         )
+        
+       )
+      
+      (let [request {:request-method rm/POST
+                     :request-uri rurls/set-language-url
+                     :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :body {:language "serbian"
                             :language-name "Serbian"}}
             response (routing
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success"))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
          )
         
         (let [test-user-admin (mon/mongodb-find-one
@@ -1536,11 +1757,15 @@
               test-user-admin-preferences (mon/mongodb-find-one
                                             "preferences"
                                             {:user-id (:_id test-user-admin)})]
+          
           (is
-            (and (= (:language test-user-admin-preferences)
-                    "serbian")
-                 (= (:language-name test-user-admin-preferences)
-                    "Serbian"))
+            (= (:language test-user-admin-preferences)
+               "serbian")
+           )
+          
+          (is
+            (= (:language-name test-user-admin-preferences)
+               "Serbian")
            )
            
          )
@@ -1549,41 +1774,54 @@
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/get-allowed-actions-url
-                     :cookie "session=test-uuid; session-visible=exists"}
+                     :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"}
             response (routing
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success")
-               (= (get-in
-                    response
-                    [:body
-                     :data])
-                  #{"user-create"
-                    "user-update"
-                    "user-read"
-                    "user-delete"
-                    "functionality-5"
-                    "functionality-6"
-                    "chat"}))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :data])
+             #{"user-create"
+               "user-update"
+               "user-read"
+               "user-delete"
+               "functionality-5"
+               "functionality-6"
+               "chat"})
          )
        
        )
@@ -1618,41 +1856,53 @@
       
       (let [request {:request-method rm/POST
                      :request-uri rurls/get-chat-users-url
-                     :cookie "session=test-uuid; session-visible=exists"}
+                     :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"}
             response (routing
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success")
-               (= (into
-                    #{}
-                    (get-in
-                      response
-                      [:body
-                       :data]))
-                  #{{:username "test-admin"}
-                    {:username "test-guest"}
-                    {:username "insert-test-guest"}})
-               
-               ))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
+         )
+        
+        (is
+          (= (into
+               #{}
+               (get-in
+                 response
+                 [:body
+                  :data]))
+             #{{:username "test-admin"}
+               {:username "test-guest"}
+               {:username "insert-test-guest"}})
+         )
        
        )
       
@@ -1663,6 +1913,7 @@
             request {:request-method rm/ws-GET
                      :request-uri rurls/chat-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :websocket
                       {:websocket-message
                         (str
@@ -1674,6 +1925,51 @@
                        request)]
         
         (is
+          (= (:status response)
+             (stc/not-found))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "error")
+         )
+       
+       )
+      
+      (let [request {:request-method rm/DELETE
+                     :request-uri rurls/delete-entity-url
+                     :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
+                     :body {:entity-type "user"
+                            :entity-filter {:_id ""}}}
+            response (routing
+                       request)]
+        
+        (is
+          (= (:status response)
+             (stc/internal-server-error))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
           (not
             (nil?
               (get-in
@@ -1682,42 +1978,21 @@
                  (rsh/set-cookie)])
              ))
          )
-       
-       )
-      
-      (let [request {:request-method rm/DELETE
-                     :request-uri rurls/delete-entity-url
-                     :cookie "session=test-uuid; session-visible=exists"
-                     :body {:entity-type "user"
-                            :entity-filter {:_id ""}}}
-            response (routing
-                       request)]
         
         (is
-          (and (= (:status response)
-                  (stc/internal-server-error))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "Error")
-               (= (get-in
-                    response
-                    [:body
-                     :status-code])
-                  70))
+          (= (get-in
+               response
+               [:body
+                :status])
+             "Error")
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status-code])
+             70)
          )
         
        )
@@ -1734,31 +2009,41 @@
             request {:request-method rm/DELETE
                      :request-uri rurls/delete-entity-url
                      :cookie "session=test-uuid; session-visible=exists"
+                     :user-agent "test user-agent"
                      :body {:entity-type "user"
                             :entity-filter {:_id (:_id user-from-db)}}}
             response (routing
                        request)]
         
         (is
-          (and (= (:status response)
-                  (stc/ok))
-               (= (get-in
-                    response
-                    [:headers
-                     (eh/content-type)])
-                  (mt/text-clojurescript))
-               (not
-                 (nil?
-                   (get-in
-                     response
-                     [:headers
-                      (rsh/set-cookie)])
-                  ))
-               (= (get-in
-                    response
-                    [:body
-                     :status])
-                  "success"))
+          (= (:status response)
+             (stc/ok))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:headers
+                (eh/content-type)])
+             (mt/text-clojurescript))
+         )
+        
+        (is
+          (not
+            (nil?
+              (get-in
+                response
+                [:headers
+                 (rsh/set-cookie)])
+             ))
+         )
+        
+        (is
+          (= (get-in
+               response
+               [:body
+                :status])
+             "success")
          )
       
          (is
