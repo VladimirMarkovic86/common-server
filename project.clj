@@ -1,4 +1,4 @@
-(defproject org.clojars.vladimirmarkovic86/common-server "0.3.28"
+(defproject org.clojars.vladimirmarkovic86/common-server "0.3.29"
   :description "Common server"
   :url "http://github.com/VladimirMarkovic86/common-server"
   :license {:name "Eclipse Public License"
@@ -11,7 +11,7 @@
                  [org.clojars.vladimirmarkovic86/ajax-lib "0.1.9"]
                  [org.clojars.vladimirmarkovic86/utils-lib "0.4.7"]
                  [org.clojars.vladimirmarkovic86/common-middle "0.2.6"]
-                 [org.clojars.vladimirmarkovic86/pdflatex-lib "0.1.0"]
+                 [org.clojars.vladimirmarkovic86/pdflatex-lib "0.1.1"]
                  ]
 
   :min-lein-version "2.0.0"
