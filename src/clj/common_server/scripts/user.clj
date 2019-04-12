@@ -6,7 +6,8 @@
             [common-middle.role-names :refer [user-admin-rname
                                               language-admin-rname
                                               role-admin-rname
-                                              chat-rname]]))
+                                              chat-rname
+                                              reports-rname]]))
 
 (defn insert-users
   "Inserts roles"
@@ -27,6 +28,10 @@
                   (mon/mongodb-find-one
                     role-cname
                     {:role-name chat-rname}))
+        reports-id (:_id
+                     (mon/mongodb-find-one
+                       role-cname
+                       {:role-name reports-rname}))
         admin-encrypted-password (utils/sha256
                                    (or (System/getenv "ADMIN_USER_PASSWORD")
                                        "123"))
@@ -42,12 +47,14 @@
        :roles [user-admin-id
                language-admin-id
                role-admin-id
-               chat-id]})
+               chat-id
+               reports-id]})
     (mon/mongodb-insert-one
       user-cname
       {:username "guest"
        :email "234@234"
        :password guest-encrypted-password
-       :roles [chat-id]}))
+       :roles [chat-id
+               reports-id]}))
  )
 

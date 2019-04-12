@@ -119,25 +119,21 @@
     "language"
     { :code 1
       :english "English translation"
-      :serbian "Српски превод" }))
+      :serbian "Српски превод" })
+  (mon/mongodb-insert-many
+    "language"
+    [{ :code 14
+       :english "English translation"
+       :serbian "Српски превод" }
+     { :code 19
+       :english "English translation"
+       :serbian "Српски превод" }]))
 
 (defn destroy-db
   "Destroy testing database"
   []
-  (mon/mongodb-drop-collection
-    "language")
-  (mon/mongodb-drop-collection
-    "session")
-  (mon/mongodb-drop-collection
-    "long-session")
-  (mon/mongodb-drop-collection
-    "chat")
-  (mon/mongodb-drop-collection
-    "preferences")
-  (mon/mongodb-drop-collection
-    "user")
-  (mon/mongodb-drop-collection
-    "role")
+  (mon/mongodb-drop-database
+    db-name)
   (mon/mongodb-disconnect))
 
 (defn before-and-after-tests
@@ -147,10 +143,9 @@
   (f)
   (destroy-db))
 
-(use-fixtures :once before-and-after-tests)
+(use-fixtures :each before-and-after-tests)
 
 (deftest test-get-allowed-actions
-  
   (testing "Test get allowed actions"
     
     (let [request {:cookie "session=test-uuid; session-visible=exists"}
@@ -193,12 +188,9 @@
           allowed-functionalities))
      )
     
-   )
-  
- )
+   ))
 
 (deftest test-get-allowed-actions-response
-  
   (testing "Test get allowed actions response"
     
     (let [request {:cookie "session=test-uuid; session-visible=exists"}
@@ -253,12 +245,9 @@
             :body {:status "error"}}))
      )
     
-   )
-  
- )
+   ))
 
 (deftest test-get-chat-users
-  
   (testing "Test get chat users"
    
     (let [chat-users-response (get-chat-users
@@ -295,12 +284,9 @@
       
      )
    
-   )
-  
- )
+   ))
 
 (deftest test-get-chat-history
-  
   (testing "Test get chat history"
     
     (is
@@ -314,12 +300,9 @@
                        :text "test2"
                        :sent-at simple-date-obj}]}))
     
-   )
-  
- )
+   ))
 
 (deftest test-save-chat-message
-  
   (testing "Test save chat message"
     
     (let [save-message (save-chat-message
@@ -359,12 +342,9 @@
      
      )
     
-   )
-  
- )
+   ))
 
 (deftest test-remove-websocket-from-set
-  
   (testing "Test remove websocket from set"
     
     (let [fill-chat-websocket-set-a (swap!
@@ -394,12 +374,9 @@
             
      )
     
-   )
-  
- )
+   ))
 
 (deftest test-get-websocket-output-fn
-
   (testing "Test get websocket output function"
     
     (let [quasi-socket (java.net.Socket.)
@@ -436,9 +413,7 @@
             
      )
     
-   )
- 
- )
+   ))
 
 (deftest test-chat-ws
   (testing "Test chat ws"
@@ -548,9 +523,7 @@
       
      )
     
-   )
-
- )
+   ))
 
 (deftest test-sign-up
   (testing "Test sign up"
@@ -676,6 +649,148 @@
           :headers {(eh/content-type) (mt/text-clojurescript)}
           :body {:status "success"}}))
      
+   ))
+
+(deftest test-get-report
+  (testing "Test get report"
+    
+    (let [request nil
+          result (get-report
+                   request)]
+      
+      (is
+        (= (:status result)
+           (stc/not-found))
+       )
+      
+      (is
+        (= (get-in
+             result
+             [:headers
+              (eh/content-type)])
+           (mt/text-clojurescript))
+       )
+      
+      (is
+        (= (get-in
+             result
+             [:body
+              :status])
+           "error")
+       )
+      
+     )
+    
+    (let [request {:request-get-params
+                    {:report "table"
+                     :entity "user"
+                     :page "-1"}}
+          result (get-report
+                   request)]
+      
+      (is
+        (= (:status result)
+           (stc/ok))
+       )
+      
+      (is
+        (= (get-in
+             result
+             [:headers
+              (eh/content-type)])
+           (mt/application-pdf))
+       )
+      
+      (is
+        (bytes?
+          (:body result))
+       )
+      
+     )
+    
+    (let [request {:request-get-params
+                    {:report "table"
+                     :entity "user"
+                     :page "-1"}
+                   :language "serbian"}
+          result (get-report
+                   request)]
+      
+      (is
+        (= (:status result)
+           (stc/ok))
+       )
+      
+      (is
+        (= (get-in
+             result
+             [:headers
+              (eh/content-type)])
+           (mt/application-pdf))
+       )
+      
+      (is
+        (bytes?
+          (:body result))
+       )
+      
+     )
+    
+    (let [request {:request-get-params
+                    {:report "single"
+                     :entity "user"
+                     :page "-1"}}
+          result (get-report
+                   request)]
+      
+      (is
+        (= (:status result)
+           (stc/ok))
+       )
+      
+      (is
+        (= (get-in
+             result
+             [:headers
+              (eh/content-type)])
+           (mt/application-pdf))
+       )
+      
+      (is
+        (bytes?
+          (:body result))
+       )
+      
+     )
+    
+    (let [request {:request-get-params
+                    {:report "single"
+                     :entity "user"
+                     :page "-1"}
+                   :language "serbian"}
+          result (get-report
+                   request)]
+      
+      (is
+        (= (:status result)
+           (stc/ok))
+       )
+      
+      (is
+        (= (get-in
+             result
+             [:headers
+              (eh/content-type)])
+           (mt/application-pdf))
+       )
+      
+      (is
+        (bytes?
+          (:body result))
+       )
+      
+     )
+    
    ))
 
 (deftest test-conj-new-routes
@@ -2058,7 +2173,5 @@
       
      )
     
-   )
-  
- )
+   ))
 

@@ -116,5 +116,10 @@
 		   { :code 71
 		     :english "Username or e-mail alredy exists."
 		     :serbian "Корисничко име или е-пошта већ постоји." }
+		   { :code 72 :english "Table of entity " :serbian "Табела ентитета " }
+		   { :code 73 :english "All pages" :serbian "Све странице" }
+		   { :code 74 :english "Page " :serbian "Страница " }
+		   { :code 75	:english "Details of entity " :serbian	"Детаљи ентитета " }
      ]))
+		
 

@@ -1,0 +1,77 @@
+
+
+\documentclass{article}
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ total={170mm,247mm},
+ left=20mm,
+ top=30mm,
+ }
+\usepackage{fancyhdr}
+\usepackage{longtable}
+\usepackage{graphicx}
+\graphicspath{ {images/} }
+\usepackage[table]{xcolor}
+\usepackage[utf8x]{inputenc}
+\usepackage[main=english,serbian,serbianc]{babel}
+\usepackage[pdfencoding=auto,
+            psdextra,]{hyperref}
+\usepackage{datetime}
+\usepackage{navigator}
+
+\usepackage{array}
+\newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{C}[1]{>{\centering\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+
+\title{Web Application - Table report}
+\author{Web Application}
+\date{\today}
+
+\definecolor{lightblue}{HTML}{0088CC}
+\definecolor{orangered}{HTML}{FF4500}
+\definecolor{lightgray}{HTML}{F3F3F3}
+\definecolor{darkgray}{HTML}{808080}
+
+\hypersetup{
+ pdftitle={Web Application - Table report},
+ pdfsubject={Table report from Web Application},
+ pdfauthor={Web Application},
+ pdfkeywords={Web Application, Table report},
+ colorlinks=true,
+ linkcolor=lightblue,
+ filecolor=lightblue,      
+ urlcolor=lightblue,
+ pdfinfo={
+  CreationDate={D:20190226110000},
+  ModDate={D:\pdfdate}
+ }
+}
+
+\begin{document}
+
+\pagestyle{fancyplain}
+\fancyhf{}
+\lhead{ \fancyplain{}{Web Application} }
+\rhead{ \fancyplain{}{\today} }
+\lfoot{ \fancyplain{}{markovic.vladimir86@gmail.com} }
+\rfoot{ \fancyplain{}{\thepage} }
+
+\sffamily
+
+\noindent
+
+\begin{longtable}{ L{20mm} C{110mm} C{30mm} }
+  \cellcolor{lightblue}\textcolor{white}{\includegraphics[width=20mm]{logo}} &
+  \textcolor{lightblue}{\Huge{TABLE_HEADING_ENTITY_NAME_GOES_HERE}} &
+  \textcolor{lightblue}{TABLE_PAGE_NUMBER_GOES_HERE} \\
+   &  & \\
+\end{longtable}
+
+TABLE_GOES_HERE
+
+\end{document}
+
+
+

@@ -4,12 +4,16 @@
             [language-lib.core :as lang]
             [utils-lib.core :as utils]
             [dao-lib.core :as dao]
+            [pdflatex-lib.core :as tex]
             [ajax-lib.http.entity-header :as eh]
             [ajax-lib.http.mime-type :as mt]
             [ajax-lib.http.status-code :as stc]
             [ajax-lib.http.request-method :as rm]
             [clojure.set :as cset]
             [clojure.string :as cstring]
+            [common-server.user.entity :as usere]
+            [common-server.role.entity :as rolee]
+            [common-server.language.entity :as languagee]
             [common-middle.request-urls :as rurls]
             [common-middle.ws-request-actions :as wsra]
             [common-middle.collection-names :refer [user-cname
@@ -18,6 +22,11 @@
             [common-middle.functionalities :as fns]
             [common-middle.role-names :refer [chat-rname]]
             [ajax-lib.http.response-header :as rsh]))
+
+(def entities-map
+     (atom {:user {:reports usere/reports}
+            :role {:reports rolee/reports}
+            :language {:reports languagee/reports}}))
 
 (defn get-allowed-actions
   "Get allowed actions for logged in user"
@@ -340,6 +349,184 @@
    :headers {(eh/content-type) (mt/text-clojurescript)}
    :body {:status "success"}})
 
+(defn get-report
+  "Generates pdf report and returns it's bytes in response body
+   
+   /reports?report=table&entity=user&page=-1&language=english
+   /reports?report=table&entity=user&page=1&language=english
+   
+   /reports?report=single&entity=user&id=0123456789&language=english
+   /reports?report=single&entity=user&id=0123456789&language=english"
+  [{{report-type :report
+     entity-type :entity
+     page-number :page
+     entity-id :id
+     selected-language :language} :request-get-params}]
+  (let [response-a (atom
+                     {:status (stc/ok)
+                      :headers {(eh/content-type) (mt/application-pdf)}})]
+    (when (= report-type
+             "table")
+      (let [template-name (if (and selected-language
+                                   (string?
+                                     selected-language)
+                                   (= selected-language
+                                      "serbian"))
+                            "table_template_sr.tex"
+                            "table_template.tex")
+            template (tex/read-template
+                       template-name)
+            page-number (try
+                          (read-string
+                            page-number)
+                          (catch Exception e
+                            (println
+                              (.getMessage
+                                e))
+                            -1))
+            entity-config-fn (get-in
+                               @entities-map
+                               [(keyword
+                                  entity-type)
+                                :reports])
+            reports-config (when (and entity-config-fn
+                                      (fn?
+                                        entity-config-fn))
+                             (entity-config-fn
+                               selected-language))
+            page-number-header (if (< -1
+                                      page-number)
+                                 (str
+                                   (lang/get-label
+                                     74
+                                     selected-language)
+                                   (inc
+                                     page-number))
+                                 (lang/get-label
+                                   73
+                                   selected-language))
+            template (tex/replace-variable
+                       template
+                       "TABLE_PAGE_NUMBER_GOES_HERE"
+                       page-number-header)
+            table-of-label (lang/get-label
+                             72
+                             selected-language)
+            entity-label (or (:entity-label reports-config)
+                             entity-type)
+            template (tex/replace-variable
+                       template
+                       "TABLE_HEADING_ENTITY_NAME_GOES_HERE"
+                       (str
+                         table-of-label
+                         entity-label))
+            request-body {:pagination (< -1
+                                         page-number)
+                          :current-page page-number
+                          :rows (or (:rows reports-config)
+                                    10)
+                          :entity-type entity-type
+                          :entity-filter {}
+                          :projection (:projection reports-config)
+                          :projection-include true
+                          :qsort (:qsort reports-config)
+                          :collation nil}
+            table-data (dao/get-entities
+                         {:body request-body})
+            replacing-content (tex/generate-latex-table
+                                (get-in
+                                  table-data
+                                  [:body
+                                   :data])
+                                reports-config
+                                selected-language)
+            prepared-template (tex/replace-variable
+                                template
+                                "TABLE_GOES_HERE"
+                                replacing-content)
+            pdf-report-bytes (tex/execute-pdflatex
+                               prepared-template)]
+        (swap!
+          response-a
+          assoc
+          :body pdf-report-bytes))
+     )
+    (when (= report-type
+             "single")
+      (let [template-name (if (and selected-language
+                                   (string?
+                                     selected-language)
+                                   (= selected-language
+                                      "serbian"))
+                            "table_template_sr.tex"
+                            "table_template.tex")
+            template (tex/read-template
+                       template-name)
+            page-number (try
+                          (read-string
+                            page-number)
+                          (catch Exception e
+                            (println
+                              (.getMessage
+                                e))
+                            -1))
+            entity-config-fn (get-in
+                               @entities-map
+                               [(keyword
+                                  entity-type)
+                                :reports])
+            reports-config (when (and entity-config-fn
+                                      (fn?
+                                        entity-config-fn))
+                             (entity-config-fn
+                               selected-language))
+            template (tex/replace-variable
+                       template
+                       "TABLE_PAGE_NUMBER_GOES_HERE"
+                       "")
+            table-of-label (lang/get-label
+                             75
+                             selected-language)
+            entity-label (or (:entity-label reports-config)
+                             entity-type)
+            template (tex/replace-variable
+                       template
+                       "TABLE_HEADING_ENTITY_NAME_GOES_HERE"
+                       (str
+                         table-of-label
+                         entity-label))
+            request-body {:entity-type entity-type
+                          :entity-filter {:_id entity-id}
+                          :entity-projection (:projection reports-config)
+                          :projection-include true}
+            table-data (dao/get-entity
+                         {:body request-body})
+            replacing-content (tex/generate-latex-single-entity
+                                (get-in
+                                  table-data
+                                  [:body
+                                   :data])
+                                reports-config
+                                selected-language)
+            prepared-template (tex/replace-variable
+                                template
+                                "TABLE_GOES_HERE"
+                                replacing-content)
+            pdf-report-bytes (tex/execute-pdflatex
+                               prepared-template)]
+        (swap!
+          response-a
+          assoc
+          :body pdf-report-bytes))
+     )
+    (when (nil?
+            (:body @response-a))
+      (reset!
+        response-a
+        (not-found))
+     )
+    @response-a))
+
 (def logged-in-routing-set
   (atom
     #{{:method rm/POST
@@ -389,7 +576,11 @@
        :uri rurls/delete-entity-url
        :authorization "-delete"
        :entity true
-       :action dao/delete-entity}}))
+       :action dao/delete-entity}
+      {:method rm/GET
+       :uri rurls/reports-url
+       :authorization fns/reports
+       :action get-report}}))
 
 (def logged-out-routing-set
   (atom

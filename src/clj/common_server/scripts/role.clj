@@ -7,7 +7,8 @@
                                               language-mod-rname
                                               role-admin-rname
                                               role-mod-rname
-                                              chat-rname]]
+                                              chat-rname
+                                              reports-rname]]
             [common-middle.functionalities :as fns]))
 
 (defn insert-roles
@@ -41,5 +42,7 @@
                         fns/role-update]}
      {:role-name chat-rname
       :functionalities [fns/chat]}
+     {:role-name reports-rname
+      :functionalities [fns/reports]}
      ]))
 
