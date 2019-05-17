@@ -357,12 +357,14 @@
    
    /reports?report=single&entity=user&id=0123456789&language=english
    /reports?report=single&entity=user&id=0123456789&language=english"
-  [{{report-type :report
-     entity-type :entity
-     page-number :page
-     entity-id :id
-     selected-language :language} :request-get-params}]
-  (let [response-a (atom
+  [request]
+  (let [{{report-type :report
+          entity-type :entity
+          page-number :page
+          entity-id :id
+          selected-language :language} :request-get-params
+         {base64-png :base64-png} :body} request
+        response-a (atom
                      {:status (stc/ok)
                       :headers {(eh/content-type) (mt/application-pdf)}})]
     (when (= report-type
@@ -462,14 +464,6 @@
                             "table_template.tex")
             template (tex/read-template
                        template-name)
-            page-number (try
-                          (read-string
-                            page-number)
-                          (catch Exception e
-                            (println
-                              (.getMessage
-                                e))
-                            -1))
             entity-config-fn (get-in
                                @entities-map
                                [(keyword
@@ -518,6 +512,45 @@
           response-a
           assoc
           :body pdf-report-bytes))
+     )
+    (when (= report-type
+             "chart")
+      (let [template-name (if (and selected-language
+                                   (string?
+                                     selected-language)
+                                   (= selected-language
+                                      "serbian"))
+                            "table_template_sr.tex"
+                            "table_template.tex")
+            template (tex/read-template
+                       template-name)
+            template (tex/replace-variable
+                       template
+                       "TABLE_PAGE_NUMBER_GOES_HERE"
+                       "")
+            table-of-label (lang/get-label
+                             76
+                             selected-language)
+            template (tex/replace-variable
+                       template
+                       "TABLE_HEADING_ENTITY_NAME_GOES_HERE"
+                       table-of-label)
+            [replacing-content
+             images-name-vector] (tex/generate-latex-image
+                                   base64-png
+                                   selected-language)
+            prepared-template (tex/replace-variable
+                                template
+                                "TABLE_GOES_HERE"
+                                replacing-content)
+            pdf-report-bytes (tex/execute-pdflatex
+                               prepared-template)]
+        (swap!
+          response-a
+          assoc
+          :body pdf-report-bytes)
+        (tex/remove-temporary-images
+          images-name-vector))
      )
     (when (nil?
             (:body @response-a))
@@ -578,6 +611,10 @@
        :entity true
        :action dao/delete-entity}
       {:method rm/GET
+       :uri rurls/reports-url
+       :authorization fns/reports
+       :action get-report}
+      {:method rm/POST
        :uri rurls/reports-url
        :authorization fns/reports
        :action get-report}}))

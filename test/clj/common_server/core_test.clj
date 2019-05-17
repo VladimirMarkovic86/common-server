@@ -711,8 +711,8 @@
     (let [request {:request-get-params
                     {:report "table"
                      :entity "user"
-                     :page "-1"}
-                   :language "serbian"}
+                     :page "-1"
+                     :language "serbian"}}
           result (get-report
                    request)]
       
@@ -766,8 +766,37 @@
     (let [request {:request-get-params
                     {:report "single"
                      :entity "user"
-                     :page "-1"}
-                   :language "serbian"}
+                     :page "-1"
+                     :language "serbian"}
+                   }
+          result (get-report
+                   request)]
+      
+      (is
+        (= (:status result)
+           (stc/ok))
+       )
+      
+      (is
+        (= (get-in
+             result
+             [:headers
+              (eh/content-type)])
+           (mt/application-pdf))
+       )
+      
+      (is
+        (bytes?
+          (:body result))
+       )
+      
+     )
+    
+    (let [base64-png "data:image/png;base64,/9j/4AAQSkZJRgABAgAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAAIAAcDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDj/Dvhv4lQ/FW6gtZP7L8SyxS3tzPOyCJo3OWYhQyupdgMKGAbsNpIKKKAP//Z"
+          request {:request-get-params
+                    {:report "chart"
+                     :language "english"}
+                   :body {:base64-png base64-png}}
           result (get-report
                    request)]
       
