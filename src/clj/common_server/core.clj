@@ -299,18 +299,44 @@
      ))
  )
 
+(def sign-up-roles
+  (atom []))
+
+(defn read-sign-up-role-ids
+  "Reads role ids for role names passed in vector parameter"
+  [role-names-vector]
+  (when (and role-names-vector
+             (vector?
+               role-names-vector))
+    (doseq [role-name role-names-vector]
+      (let [{role-id :_id} (mon/mongodb-find-one
+                            role-cname
+                            {:role-name role-name})]
+        (swap!
+          sign-up-roles
+          conj
+          role-id))
+     ))
+ )
+
 (defn sign-up
   "Sign up new user with given data"
   [request]
   (try
     (let [request-body (:body
-                         request)]
+                         request)
+          {entity-type :entity-type
+           entity :entity} request-body
+          entity (assoc
+                   entity
+                   :roles
+                   @sign-up-roles)]
       (mon/mongodb-insert-one
-        (:entity-type request-body)
-        (:entity request-body))
+        entity-type
+        entity)
       (let [{_id :_id} (mon/mongodb-find-one
-                         (:entity-type request-body)
-                         (:entity request-body))]
+                         entity-type
+                         entity)]
         (mon/mongodb-insert-one
           "preferences"
           {:user-id _id
@@ -529,7 +555,7 @@
                        "TABLE_PAGE_NUMBER_GOES_HERE"
                        "")
             table-of-label (lang/get-label
-                             76
+                             1027
                              selected-language)
             template (tex/replace-variable
                        template
