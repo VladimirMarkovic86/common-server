@@ -525,6 +525,58 @@
     
    ))
 
+(deftest test-read-sign-up-role-ids
+  (testing "Test read sign up role ids"
+    
+    (let [role-names-vector nil
+          result (read-sign-up-role-ids
+                   role-names-vector)]
+      
+      (is
+        (nil?
+          result)
+       )
+      
+     )
+    
+    (let [role-names-vector "test"
+          result (read-sign-up-role-ids
+                   role-names-vector)]
+      
+      (is
+        (nil?
+          result)
+       )
+      
+     )
+    
+    (let [role-names-vector [chat-rname]
+          result (read-sign-up-role-ids
+                   role-names-vector)]
+      
+      (is
+        (vector?
+          @sign-up-roles)
+       )
+      
+      (is
+        (not
+          (empty?
+            @sign-up-roles))
+       )
+      
+      (let [first-role-id (first
+                            @sign-up-roles)]
+        (is
+          (string?
+            first-role-id)
+         )
+       )
+      
+     )
+    
+   ))
+
 (deftest test-sign-up
   (testing "Test sign up"
     
