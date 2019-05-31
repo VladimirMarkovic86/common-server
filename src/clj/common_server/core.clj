@@ -18,10 +18,23 @@
             [common-middle.ws-request-actions :as wsra]
             [common-middle.collection-names :refer [user-cname
                                                     role-cname
-                                                    chat-cname]]
+                                                    chat-cname
+                                                    reset-password-cname]]
             [common-middle.functionalities :as fns]
             [common-middle.role-names :refer [chat-rname]]
-            [ajax-lib.http.response-header :as rsh]))
+            [ajax-lib.http.response-header :as rsh]
+            [mail-lib.core :as mail])
+  (:import [java.io FileInputStream
+                    File]))
+
+(def email-address
+     (atom "markovic.vladimir86.no.reply@gmail.com"))
+
+(def email-password
+     (atom "secret"))
+
+(def reset-password-mail-template-path
+     (atom "resources/mails/reset_password_template.html"))
 
 (def entities-map
      (atom {:user {:reports usere/reports}
@@ -87,8 +100,7 @@
             :data allowed-actions}}
     {:status (stc/ok)
      :headers {(eh/content-type) (mt/text-clojurescript)}
-     :body {:status "error"}})
- )
+     :body {:status "error"}}))
 
 (defn get-chat-users
   "Get chat users"
@@ -586,6 +598,167 @@
      )
     @response-a))
 
+(defn generate-reset-password-code
+  "Generates reset password code"
+  [email]
+  (when (and email
+             (string?
+               email))
+    (let [reset-password-obj (mon/mongodb-find-one
+                               reset-password-cname
+                               {:email email})]
+      (if reset-password-obj
+        (let [uuid (.toString
+                     (java.util.UUID/randomUUID))]
+          (mon/mongodb-update-one
+            reset-password-cname
+            {:email email}
+            {:email email
+             :uuid uuid
+             :created-at (java.util.Date.)})
+          uuid)
+        (let [uuid (.toString
+                     (java.util.UUID/randomUUID))]
+          (mon/mongodb-insert-one
+            reset-password-cname
+            {:email email
+             :uuid uuid
+             :created-at (java.util.Date.)})
+          uuid))
+     ))
+ )
+
+(defn forgot-password
+  "Checks if user with sent email exists, and if it does sends reset password code to it"
+  [request]
+  (let [{{email :email} :body} request
+        email (or email
+                  "")
+        selected-language (ssn/get-accept-language
+                            request)
+        user-db-obj (mon/mongodb-find-one
+                      user-cname
+                      {:email email})]
+    (if user-db-obj
+      (let [from @email-address
+            password @email-password
+            to email
+            subject (lang/get-label
+                      81
+                      selected-language)
+            from-contact-name (lang/get-label
+                                62
+                                selected-language)
+            content (try
+                      (let [template-path @reset-password-mail-template-path
+                            template-is (FileInputStream.
+                                          (File.
+                                            template-path))
+                            available-bytes (.available
+                                              template-is)
+                            template-byte-array (byte-array
+                                                  available-bytes)
+                            read-is (.read
+                                      template-is
+                                      template-byte-array)]
+                        (.close
+                          template-is)
+                        (String.
+                          template-byte-array
+                          "UTF-8"))
+                      (catch Exception e
+                        (println
+                          (.getMessage
+                            e))
+                        ""))
+            content (cstring/replace
+                      content
+                      "EMAIL_TITLE"
+                      (lang/get-label
+                        81
+                        selected-language))
+            content (cstring/replace
+                      content
+                      "PARAGRAPH_CONTENT"
+                      (lang/get-label
+                        82
+                        selected-language))
+            reset-password-code (generate-reset-password-code
+                                  email)
+            content (cstring/replace
+                      content
+                      "RESET_PASSWORD_CODE"
+                      reset-password-code)]
+        (mail/send-email
+          from
+          password
+          to
+          subject
+          content
+          true
+          from-contact-name)
+        {:status (stc/ok)
+         :headers {(eh/content-type) (mt/text-clojurescript)}
+         :body {:status "success"}})
+      (not-found))
+   ))
+
+(defn reset-password-code
+  "Check if reset password code exists"
+  [request]
+  (let [{{code :uuid} :body} request
+        code (or code
+                 "")
+        reset-password-db-obj (mon/mongodb-find-one
+                                reset-password-cname
+                                {:uuid code})]
+    (if reset-password-db-obj
+      (let [{email :email
+             db-uuid :uuid} reset-password-db-obj]
+        {:status (stc/ok)
+         :headers {(eh/content-type) (mt/text-clojurescript)}
+         :body {:status "success"
+                :email email
+                :uuid db-uuid}})
+      (not-found))
+   ))
+
+(defn reset-password-final
+  "Checks if reset password code exists and if it does changes password"
+  [request]
+  (let [{{code :uuid
+          new-password :new-password} :body} request
+        code (or code
+                 "")
+        new-password (or new-password
+                         "")
+        reset-password-db-obj (mon/mongodb-find-one
+                                reset-password-cname
+                                {:uuid code})]
+    (if reset-password-db-obj
+      (let [{email :email} reset-password-db-obj]
+        (try
+          (mon/mongodb-update-one
+            user-cname
+            {:email email}
+            {:password new-password})
+          (mon/mongodb-delete-one
+            reset-password-cname
+            {:email email})
+          {:status (stc/ok)
+           :headers {(eh/content-type) (mt/text-clojurescript)}
+           :body {:status "success"}}
+          (catch Exception e
+            (println
+              (.getMessage
+                e))
+            {:status (stc/internal-server-error)
+             :headers {(eh/content-type) (mt/text-clojurescript)}
+             :body {:status "error"}}))
+       )
+      (not-found))
+   ))
+
 (def logged-in-routing-set
   (atom
     #{{:method rm/POST
@@ -643,7 +816,8 @@
       {:method rm/POST
        :uri rurls/reports-url
        :authorization fns/reports
-       :action get-report}}))
+       :action get-report}
+      }))
 
 (def logged-out-routing-set
   (atom
@@ -661,7 +835,17 @@
        :action ssn/am-i-logged-in}
       {:method rm/POST
        :uri rurls/get-labels-url
-       :action lang/get-labels}}))
+       :action lang/get-labels}
+      {:method rm/POST
+       :uri rurls/forgot-password-url
+       :action forgot-password}
+      {:method rm/POST
+       :uri rurls/reset-password-code-url
+       :action reset-password-code}
+      {:method rm/POST
+       :uri rurls/reset-password-final-url
+       :action reset-password-final}
+      }))
 
 (defn conj-new-routes
   "Adds new routes"

@@ -120,6 +120,16 @@
 		   { :code 73 :english "All pages" :serbian "Све странице" }
 		   { :code 74 :english "Page " :serbian "Страница " }
 		   { :code 75	:english "Details of entity " :serbian	"Детаљи ентитета " }
+		   { :code 76	:english "Forgot password?" :serbian	"Заборавили сте лозинку?" }
+		   { :code 77	:english "Reset password code" :serbian	"Код за промену лозинке" }
+		   { :code 78	:english "Confirm" :serbian	"Потврди" }
+		   { :code 79
+		     :english "Reset password code expired or is incorrect"
+		     :serbian	"Код за промену лозинке је истекао или није исправан" }
+		   { :code 80	:english "New password" :serbian	"Нова лозинка" }
+		   { :code 81	:english "Sample App reset password" :serbian	"Sample App промена лозинке" }
+		   { :code 82
+		     :english "A password reset was requested for Sample App account with this email address.<br>To continue password reset copy, paste and confirm code from below."
+       :serbian	"Налог апликације Sample App са овом е-адресом захтева промену лозинке.<br>Да би наставили промену лозинке копирајте, налепите и потврдите следећи код." }
      ]))
-		
 

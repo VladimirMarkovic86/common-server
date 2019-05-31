@@ -42,7 +42,7 @@
     (mon/mongodb-insert-one
       user-cname
       {:username "admin"
-       :email "123@123"
+       :email "markovic.vladimir86@gmail.com"
        :password admin-encrypted-password
        :roles [user-admin-id
                language-admin-id
@@ -52,7 +52,7 @@
     (mon/mongodb-insert-one
       user-cname
       {:username "guest"
-       :email "234@234"
+       :email "markovic.vladimir86.no.reply@gmail.com"
        :password guest-encrypted-password
        :roles [chat-id
                reports-id]}))

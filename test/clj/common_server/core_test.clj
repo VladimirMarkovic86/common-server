@@ -11,6 +11,7 @@
             [common-middle.role-names :refer [chat-rname]]
             [common-middle.ws-request-actions :as wsra]
             [session-lib.core :as ssn]
+            [utils-lib.core :as utils]
             [clojure.set :as cset]))
 
 (def db-uri
@@ -868,6 +869,105 @@
       (is
         (bytes?
           (:body result))
+       )
+      
+     )
+    
+   ))
+
+(deftest test-forgot-password-reset-password-code-reset-password-final
+  (testing "Test forgot password, reset password code and reset password final"
+    
+    (let [request nil 
+          result (forgot-password
+                   request)]
+      
+      (is
+        (= result
+           (not-found))
+       )
+      
+     )
+    
+    (let [request {:body {:email "test.123@123"}
+                   :accept-language "sr,en;q=0.5"}
+          result (forgot-password
+                   request)]
+      
+      (is
+        (= result
+           {:status (stc/ok)
+            :headers {(eh/content-type) (mt/text-clojurescript)}
+            :body {:status "success"}})
+       )
+      
+     )
+    
+    (let [request nil 
+          result (reset-password-code
+                   request)]
+      
+      (is
+        (= result
+           (not-found))
+       )
+      
+     )
+    
+    (let [reset-password-db-obj (mon/mongodb-find-one
+                                  "reset-password"
+                                  {:email "test.123@123"})
+          code (:uuid reset-password-db-obj)
+          request {:body {:uuid code}
+                   :accept-language "sr,en;q=0.5"}
+          result (reset-password-code
+                   request)]
+      
+      (is
+        (= result
+           {:status (stc/ok)
+            :headers {(eh/content-type) (mt/text-clojurescript)}
+            :body {:status "success"
+                   :email "test.123@123"
+                   :uuid code}})
+       )
+      
+     )
+    
+    (let [request nil 
+          result (reset-password-final
+                   request)]
+      
+      (is
+        (= result
+           (not-found))
+       )
+      
+     )
+    
+    (let [reset-password-db-obj (mon/mongodb-find-one
+                                  "reset-password"
+                                  {:email "test.123@123"})
+          code (:uuid reset-password-db-obj)
+          request {:body {:uuid code
+                          :new-password (utils/sha256
+                                          "123")}
+                   :accept-language "sr,en;q=0.5"}
+          result (reset-password-final
+                   request)]
+      
+      (is
+        (= result
+           {:status (stc/ok)
+            :headers {(eh/content-type) (mt/text-clojurescript)}
+            :body {:status "success"}})
+       )
+      
+      (is
+        (nil?
+          (mon/mongodb-find-one
+            "reset-password"
+            {:email "test.123@123"}))
        )
       
      )
