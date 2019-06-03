@@ -19,7 +19,9 @@
             [common-middle.collection-names :refer [user-cname
                                                     role-cname
                                                     chat-cname
-                                                    reset-password-cname]]
+                                                    reset-password-cname
+                                                    session-cname
+                                                    long-session-cname]]
             [common-middle.functionalities :as fns]
             [common-middle.role-names :refer [chat-rname]]
             [ajax-lib.http.response-header :as rsh]
@@ -45,45 +47,74 @@
   "Get allowed actions for logged in user"
   [request]
   (let [cookie-string (:cookie request)
+        long-session-uuid (ssn/get-cookie
+                            cookie-string
+                            :long-session)
+        long-session-obj (when long-session-uuid
+                           (mon/mongodb-find-one
+                             long-session-cname
+                             {:uuid long-session-uuid}))
         session-uuid (ssn/get-cookie
                        cookie-string
-                       :long-session)
-        [session-uuid
-         session-collection] (if-not session-uuid
-                               [(ssn/get-cookie
-                                  cookie-string
-                                  :session)
-                                "session"]
-                               [session-uuid
-                                "long-session"])]
-    (when-let [session-uuid session-uuid]
-      (when-let [session-obj (mon/mongodb-find-one
-                               session-collection
-                               {:uuid session-uuid})]
-        (let [user-id (:user-id session-obj)]
-          (when-let [user (mon/mongodb-find-by-id
-                            user-cname
-                            user-id)]
-            (let [roles (:roles user)
-                  allowed-functionalities (atom #{})]
-              (doseq [role-id roles]
-                (when-let [role (mon/mongodb-find-by-id
-                                  role-cname
-                                  role-id)]
-                  (swap!
-                    allowed-functionalities
-                    (fn [atom-value
-                         conj-coll]
-                      (apply
-                        conj
-                        atom-value
-                        conj-coll))
-                    (:functionalities role))
-                 ))
+                       :session)
+        session-obj (when session-uuid
+                      (mon/mongodb-find-one
+                        session-cname
+                        {:uuid session-uuid}))
+        result (atom nil)]
+    (when long-session-obj
+      (let [user-id (:user-id long-session-obj)]
+        (when-let [user (mon/mongodb-find-by-id
+                          user-cname
+                          user-id)]
+          (let [roles (:roles user)
+                allowed-functionalities (atom #{})]
+            (doseq [role-id roles]
+              (when-let [role (mon/mongodb-find-by-id
+                                role-cname
+                                role-id)]
+                (swap!
+                  allowed-functionalities
+                  (fn [atom-value
+                       conj-coll]
+                    (apply
+                      conj
+                      atom-value
+                      conj-coll))
+                  (:functionalities role))
+               ))
+            (reset!
+              result
               @allowed-functionalities))
          ))
-     ))
- )
+     )
+    (when session-obj
+      (let [user-id (:user-id session-obj)]
+        (when-let [user (mon/mongodb-find-by-id
+                          user-cname
+                          user-id)]
+          (let [roles (:roles user)
+                allowed-functionalities (atom #{})]
+            (doseq [role-id roles]
+              (when-let [role (mon/mongodb-find-by-id
+                                role-cname
+                                role-id)]
+                (swap!
+                  allowed-functionalities
+                  (fn [atom-value
+                       conj-coll]
+                    (apply
+                      conj
+                      atom-value
+                      conj-coll))
+                  (:functionalities role))
+               ))
+            (reset!
+              result
+              @allowed-functionalities))
+         ))
+     )
+    @result))
 
 (def get-allowed-actions-memo
      (memoize
@@ -983,12 +1014,15 @@
                   authorized-actions
                   requested-authorization))
           (let [action-fn (:action requested-element)
+                action-uri (:uri requested-element)
                 response (if (fn?
                                action-fn)
                            (action-fn
                              request)
                            action-fn)]
-            (if is-logged-in
+            (if (and is-logged-in
+                     (not= action-uri
+                           "/logout"))
               (ssn/set-session-cookies
                 request
                 response)
