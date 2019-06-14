@@ -21,7 +21,8 @@
                                                     chat-cname
                                                     reset-password-cname
                                                     session-cname
-                                                    long-session-cname]]
+                                                    long-session-cname
+                                                    preferences-cname]]
             [common-middle.functionalities :as fns]
             [common-middle.role-names :refer [chat-rname]]
             [ajax-lib.http.response-header :as rsh]
@@ -42,6 +43,9 @@
      (atom {:user {:reports usere/reports}
             :role {:reports rolee/reports}
             :language {:reports languagee/reports}}))
+
+(def set-specific-preferences-a-fn
+     (atom nil))
 
 (defn get-allowed-actions
   "Get allowed actions for logged in user"
@@ -464,6 +468,7 @@
                                       (fn?
                                         entity-config-fn))
                              (entity-config-fn
+                               request
                                selected-language))
             page-number-header (if (< -1
                                       page-number)
@@ -504,13 +509,22 @@
                           :collation nil}
             table-data (dao/get-entities
                          {:body request-body})
-            replacing-content (tex/generate-latex-table
-                                (get-in
-                                  table-data
-                                  [:body
-                                   :data])
-                                reports-config
-                                selected-language)
+            replacing-content (if (= (:card-columns reports-config)
+                                     0)
+                                (tex/generate-latex-table
+                                  (get-in
+                                    table-data
+                                    [:body
+                                     :data])
+                                  reports-config
+                                  selected-language)
+                                (tex/generate-latex-card-table
+                                  (get-in
+                                    table-data
+                                    [:body
+                                     :data])
+                                  reports-config
+                                  selected-language))
             prepared-template (tex/replace-variable
                                 template
                                 "TABLE_GOES_HERE"
@@ -542,6 +556,7 @@
                                       (fn?
                                         entity-config-fn))
                              (entity-config-fn
+                               request
                                selected-language))
             template (tex/replace-variable
                        template
@@ -628,6 +643,51 @@
         (not-found))
      )
     @response-a))
+
+(defn read-preferences
+  "Read preferences from database and send them back to front end"
+  [request]
+  (let [preferences (ssn/get-preferences
+                      request)]
+    {:status (stc/ok)
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"
+            :preferences preferences}}))
+
+(defn save-preferences
+  "Saves preferences into database"
+  [request]
+  (try
+    (let [preferences (get-in
+                        request
+                        [:body
+                         :preferences])
+          session-obj (ssn/get-session-obj
+                        request)
+          db-preferences (ssn/get-preferences
+                           request)]
+      (if db-preferences
+        (mon/mongodb-update-one
+          preferences-cname
+          {:user-id (:user-id db-preferences)}
+          preferences)
+        (mon/mongodb-insert-one
+          preferences-cname
+          (assoc
+            preferences
+            :user-id (:user-id session-obj))
+         ))
+      {:status (stc/ok)
+       :headers {(eh/content-type) (mt/text-clojurescript)}
+       :body {:status "success"}})
+    (catch Exception e
+      (println
+        (.getMessage
+          e))
+      {:status (stc/internal-server-error)
+       :headers {(eh/content-type) (mt/text-clojurescript)}
+       :body {:status "error"}}))
+ )
 
 (defn generate-reset-password-code
   "Generates reset password code"
@@ -848,6 +908,12 @@
        :uri rurls/reports-url
        :authorization fns/reports
        :action get-report}
+      {:method rm/POST
+       :uri rurls/read-preferences-url
+       :action read-preferences}
+      {:method rm/POST
+       :uri rurls/save-preferences-url
+       :action save-preferences}
       }))
 
 (def logged-out-routing-set

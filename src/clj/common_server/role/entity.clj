@@ -1,10 +1,14 @@
 (ns common-server.role.entity
   (:require [language-lib.core :refer [get-label]]
-            [common-middle.role.entity :as cmre]))
+            [common-middle.role.entity :as cmre]
+            [common-server.preferences :as prf]))
 
 (defn reports
   "Returns reports projection"
-  [& [chosen-language]]
+  [request
+   & [chosen-language]]
+  (prf/set-preferences
+    request)
   {:entity-label (get-label
                    22
                    chosen-language)
@@ -12,7 +16,12 @@
                 ;:functionalities
                 ]
    :qsort {:role-name 1}
-   :rows cmre/rows
+   :rows (int
+           (cmre/calculate-rows))
+   :table-rows (int
+                 @cmre/table-rows-a)
+   :card-columns (int
+                   @cmre/card-columns-a)
    :labels {:role-name (get-label
                          28
                          chosen-language)

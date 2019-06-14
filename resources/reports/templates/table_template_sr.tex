@@ -19,6 +19,7 @@
             psdextra,]{hyperref}
 \usepackage{datetime}
 \usepackage{navigator}
+\newcommand\secondlanguage[1]{\foreignlanguage{english}{#1}}
 
 \usepackage{array}
 \newcolumntype{L}[1]{>{\raggedright\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
@@ -32,6 +33,7 @@
 \definecolor{lightblue}{HTML}{0088CC}
 \definecolor{orangered}{HTML}{FF4500}
 \definecolor{lightgray}{HTML}{F3F3F3}
+\definecolor{gray}{HTML}{CECFD5}
 \definecolor{darkgray}{HTML}{808080}
 
 \hypersetup{
@@ -59,6 +61,8 @@
 \rfoot{ \fancyplain{}{\thepage} }
 
 \sffamily
+
+\arrayrulecolor{gray}
 
 \noindent
 

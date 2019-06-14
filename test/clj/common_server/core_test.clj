@@ -115,6 +115,11 @@
                     :text "test2"
                     :sent-at simple-date-obj}]
          })
+    (mon/mongodb-insert-one
+      "preferences"
+      { :user-id (:_id test-user)
+        :language "english"
+        :language-name "English"})
    )
   (mon/mongodb-insert-one
     "language"
@@ -869,6 +874,91 @@
       (is
         (bytes?
           (:body result))
+       )
+      
+     )
+    
+   ))
+
+(deftest test-read-preferences
+  (testing "Test read preferences"
+    
+    (let [request nil
+          result (read-preferences
+                   request)]
+      
+      (is 
+        (= result
+           {:status (stc/ok)
+            :headers {"Content-Type" "text/clojurescript"}
+            :body {:status "success"
+                   :preferences nil}})
+       )
+      
+     )
+    
+    (let [request {:cookie "session=test-uuid; session-visible=exists"}
+          result (read-preferences
+                   request)]
+      
+      (is
+        (= (:status result)
+           (stc/ok))
+       )
+      
+      (is
+        (= (:headers result)
+           {"Content-Type" "text/clojurescript"})
+       )
+      
+      (is 
+        (contains?
+          (get-in
+            result
+            [:body
+             :preferences])
+          :language)
+       )
+      
+      (is 
+        (contains?
+          (get-in
+            result
+            [:body
+             :preferences])
+          :language-name)
+       )
+      
+     )
+    
+   ))
+
+(deftest test-save-preferences
+  (testing "Test save preferences"
+    
+    (let [request nil
+          result (save-preferences
+                   request)]
+      
+      (is
+        (= result
+           {:status (stc/internal-server-error)
+            :headers {"Content-Type" "text/clojurescript"}
+            :body {:status "error"}})
+       )
+      
+     )
+    
+    (let [request {:cookie "session=test-uuid; session-visible=exists"
+                   :body {:preferences {:test-preferences 1}}}
+          result (save-preferences
+                   request)]
+      
+      (is
+        (= result
+           {:status (stc/ok)
+            :headers {"Content-Type" "text/clojurescript"}
+            :body {:status "success"}})
        )
       
      )
@@ -1943,7 +2033,7 @@
                response
                [:body
                 :language])
-             "serbian")
+             "english")
          )
         
         (let [data (get-in
@@ -1959,8 +2049,8 @@
            )
           
           (is
-            (= (:serbian data-element)
-               "Српски превод")
+            (= (:english data-element)
+               "English translation")
            )
           
          )
@@ -1976,7 +2066,7 @@
         
         (is
           (= (:status response)
-             (stc/internal-server-error))
+             (stc/ok))
          )
         
         (is
@@ -2002,7 +2092,7 @@
                response
                [:body
                 :status])
-             "Error")
+             "success")
          )
         
        )

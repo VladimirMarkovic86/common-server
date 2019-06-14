@@ -129,7 +129,12 @@
 		   { :code 80	:english "New password" :serbian	"Нова лозинка" }
 		   { :code 81	:english "Sample App reset password" :serbian	"Sample App промена лозинке" }
 		   { :code 82
-		     :english "A password reset was requested for Sample App account with this email address.<br>To continue password reset copy, paste and confirm code from below."
-       :serbian	"Налог апликације Sample App са овом е-адресом захтева промену лозинке.<br>Да би наставили промену лозинке копирајте, налепите и потврдите следећи код." }
+		     :english "A password reset was requested for Sample App account with this email address. <br> To continue password reset copy, paste and confirm code from below."
+       :serbian	"Налог апликације Sample App са овом е-адресом захтева промену лозинке. <br> Да би наставили промену лозинке копирајте, налепите и потврдите следећи код." }
+		   { :code 83	:english "Preferences" :serbian	"Подешавања" }
+		   { :code 84	:english "Display" :serbian	"Приказ" }
+		   { :code 85	:english "Language entity" :serbian	"Ентитет језик" }
+		   { :code 86	:english "User entity" :serbian	"Ентитет корисник" }
+		   { :code 87	:english "Role entity" :serbian	"Ентитет улога" }
      ]))
 
