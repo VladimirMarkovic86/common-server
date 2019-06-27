@@ -244,10 +244,8 @@
                                   @chat-websocket-set-a)
         websocket-output-fn-el (first
                                  websocket-output-fn-set)
-        websocket-socket (:websocket-socket
-                              websocket-output-fn-el)
-        websocket-output-fn (:websocket-output-fn
-                              websocket-output-fn-el)]
+        websocket-socket (:websocket-socket websocket-output-fn-el)
+        websocket-output-fn (:websocket-output-fn websocket-output-fn-el)]
     (when (not
             (nil?
               websocket-socket))
@@ -337,6 +335,59 @@
               {:action wsra/receive-audio-chunk-action
                :sender sender-username
                :audio-chunk audio-chunk}))
+         ))
+      (when (= action
+               wsra/make-a-call-action)
+        (let [{receiver-username :receiver
+               sender-username :sender} request-body
+              receiver-websocket-output-fn (get-websocket-output-fn
+                                             receiver-username)]
+          (when (nil?
+                  receiver-websocket-output-fn)
+            (websocket-output-fn
+              {:action wsra/unavailable-action
+               :sender receiver-username}))
+          (when (fn?
+                  receiver-websocket-output-fn)
+            (receiver-websocket-output-fn
+              {:action wsra/receive-call-action
+               :sender sender-username}))
+         ))
+      (when (= action
+               wsra/call-accepted-action)
+        (let [{receiver-username :receiver
+               sender-username :sender} request-body
+              receiver-websocket-output-fn (get-websocket-output-fn
+                                             receiver-username)]
+          (when (fn?
+                  receiver-websocket-output-fn)
+            (receiver-websocket-output-fn
+              {:action wsra/call-accepted-action
+               :sender sender-username}))
+         ))
+      (when (= action
+               wsra/hang-up-call-action)
+        (let [{receiver-username :receiver
+               sender-username :sender} request-body
+              receiver-websocket-output-fn (get-websocket-output-fn
+                                             receiver-username)]
+          (when (fn?
+                  receiver-websocket-output-fn)
+            (receiver-websocket-output-fn
+              {:action wsra/hang-up-call-action
+               :sender sender-username}))
+         ))
+      (when (= action
+               wsra/unavailable-action)
+        (let [{receiver-username :receiver
+               sender-username :sender} request-body
+              receiver-websocket-output-fn (get-websocket-output-fn
+                                             receiver-username)]
+          (when (fn?
+                  receiver-websocket-output-fn)
+            (receiver-websocket-output-fn
+              {:action wsra/unavailable-action
+               :sender sender-username}))
          ))
      )
     (catch Exception e

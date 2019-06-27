@@ -136,5 +136,9 @@
 		   { :code 85	:english "Language entity" :serbian	"Ентитет језик" }
 		   { :code 86	:english "User entity" :serbian	"Ентитет корисник" }
 		   { :code 87	:english "Role entity" :serbian	"Ентитет улога" }
+		   { :code 88	:english "Make a call" :serbian	"Позови" }
+		   { :code 89	:english "Calling . . ." :serbian	"Позивање . . ." }
+		   { :code 90	:english "Answering . . ." :serbian	"Јављање . . ." }
+		   { :code 91	:english "Connected." :serbian	"Повезан." }
      ]))
 
