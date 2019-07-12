@@ -1,17 +1,17 @@
-(defproject org.clojars.vladimirmarkovic86/common-server "0.3.39"
+(defproject org.clojars.vladimirmarkovic86/common-server "0.3.40"
   :description "Common server"
   :url "http://github.com/VladimirMarkovic86/common-server"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0"]
-                 [org.clojars.vladimirmarkovic86/mongo-lib "0.2.8"]
-                 [org.clojars.vladimirmarkovic86/session-lib "0.2.23"]
-                 [org.clojars.vladimirmarkovic86/language-lib "0.2.31"]
-                 [org.clojars.vladimirmarkovic86/dao-lib "0.3.23"]
+                 [org.clojars.vladimirmarkovic86/mongo-lib "0.2.9"]
+                 [org.clojars.vladimirmarkovic86/session-lib "0.2.24"]
+                 [org.clojars.vladimirmarkovic86/language-lib "0.2.32"]
+                 [org.clojars.vladimirmarkovic86/dao-lib "0.3.24"]
                  [org.clojars.vladimirmarkovic86/ajax-lib "0.1.11"]
-                 [org.clojars.vladimirmarkovic86/utils-lib "0.4.9"]
+                 [org.clojars.vladimirmarkovic86/utils-lib "0.4.10"]
                  [org.clojars.vladimirmarkovic86/common-middle "0.2.9"]
-                 [org.clojars.vladimirmarkovic86/pdflatex-lib "0.1.4"]
+                 [org.clojars.vladimirmarkovic86/pdflatex-lib "0.1.5"]
                  [org.clojars.vladimirmarkovic86/mail-lib "0.1.1"]
                  ]
 
