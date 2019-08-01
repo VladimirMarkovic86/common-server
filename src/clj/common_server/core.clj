@@ -24,6 +24,7 @@
                                                     long-session-cname
                                                     preferences-cname]]
             [common-middle.functionalities :as fns]
+            [common-middle.functionalities-by-url :as cmfbu]
             [common-middle.role-names :refer [chat-rname]]
             [ajax-lib.http.response-header :as rsh]
             [mail-lib.core :as mail])
@@ -46,6 +47,82 @@
 
 (def set-specific-preferences-a-fn
      (atom nil))
+
+(defn print-request
+  "Prints request map"
+  [request]
+  (let [ws-content-length (get-in
+                            request
+                            [:websocket
+                             :websocket-message-length])
+        ws-content-length (if ws-content-length
+                            ws-content-length
+                            (when-let [websocket-message (get-in
+                                                           request
+                                                           [:websocket
+                                                            :websocket-message])]
+                              (count
+                                websocket-message))
+                           )
+        content-length (:content-length request)
+        content-length (if (and content-length
+                                (string?
+                                  content-length))
+                         (read-string
+                           content-length)
+                         (when-let [body (:body
+                                           request)]
+                           (count
+                             body))
+                        )
+        result (atom nil)]
+    (when (or (and ws-content-length
+                   (< ws-content-length
+                      300))
+              (and content-length
+                   (< content-length
+                      300))
+              (and (nil?
+                     ws-content-length)
+                   (nil?
+                     content-length))
+           )
+      (reset!
+        result
+        request))
+    (when (and ws-content-length
+               (<= 300
+                   ws-content-length))
+      (reset!
+        result
+        (update-in
+          request
+          [:websocket]
+          dissoc
+          :websocket-message))
+     )
+    (when (and content-length
+               (<= 300
+                   content-length))
+      (reset!
+        result
+        (dissoc
+          request
+          :body))
+     )
+   (println
+     (str
+       "\n"
+       @result))
+   @result))
+
+(defn not-found
+  "If request is not found"
+  []
+  {:status (stc/not-found)
+   :headers {(eh/content-type) (mt/text-clojurescript)}
+   :body {:status "error"
+          :error-message "404 not found"}})
 
 (defn get-allowed-actions
   "Get allowed actions for logged in user"
@@ -124,9 +201,181 @@
      (memoize
        get-allowed-actions))
 
-(defn get-allowed-actions-response
-  "Get allowed actions for logged in user response"
+(defn check-authorization
+  "Check if request is authorized to be executed"
   [request]
+  (let [authorized-actions (get-allowed-actions-memo
+                             request)
+        request-uri (:request-uri request)
+        functionalities (cmfbu/get-functionalities-by-url
+                          request-uri)
+        functionalities-set (if (string?
+                                  functionalities)
+                              #{functionalities}
+                              functionalities)]
+    (if (empty?
+          functionalities-set)
+      true
+      (let [intersection-set (cset/intersection
+                               functionalities-set
+                               authorized-actions)]
+        (if (empty?
+              intersection-set)
+          false
+          (let [request-body (:body request)
+                request-body-keys-set (into
+                                        #{}
+                                        request-body)
+                is-entity-action (< 2
+                                    (count
+                                      (cset/intersection
+                                        request-body-keys-set
+                                        #{:entity-type
+                                          :entity-filter
+                                          :_id}))
+                                  )]
+            (if is-entity-action
+              (not
+                (empty?
+                  (cset/select
+                    (fn [el]
+                      (cstring/index-of
+                        el
+                        (:entity-type request-body))
+                     )
+                    intersection-set))
+               )
+              true))
+         ))
+     ))
+ )
+
+(defmulti routing-fn
+  (fn [request]
+    (if (= (:request-method request)
+           rm/OPTIONS)
+      [rm/OPTIONS
+       "*"
+       :logged-in-or-out
+       :authorized]
+      (let [is-logged-in (ssn/am-i-logged-in-fn
+                           request)]
+        (if is-logged-in
+          (let [is-authorized (check-authorization
+                                request)]
+            (if is-authorized
+              [(:request-method request)
+               (:request-uri request)
+               :logged-in
+               :authorized]
+              ["*"
+               "*"
+               :logged-in
+               :not-authorized]))
+          [(:request-method request)
+           (:request-uri request)
+           :logged-out
+           :authorized]))
+     ))
+ )
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/am-i-logged-in-url
+   :logged-in
+   :authorized]
+  [request]
+  (ssn/am-i-logged-in
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/am-i-logged-in-url
+   :logged-out
+   :authorized]
+  [request]
+  (ssn/am-i-logged-in
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/get-entities-url
+   :logged-in
+   :authorized]
+  [request]
+  (dao/get-entities
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/get-entity-url
+   :logged-in
+   :authorized]
+  [request]
+  (dao/get-entity
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/update-entity-url
+   :logged-in
+   :authorized]
+  [request]
+  (dao/update-entity
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/insert-entity-url
+   :logged-in
+   :authorized]
+  [request]
+  (dao/insert-entity
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/logout-url
+   :logged-in
+   :authorized]
+  [request]
+  (ssn/logout
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/get-labels-url
+   :logged-in
+   :authorized]
+  [request]
+  (lang/get-labels
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/get-labels-url
+   :logged-out
+   :authorized]
+  [request]
+  (lang/get-labels
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/set-language-url
+   :logged-in
+   :authorized]
+  [request]
+  (lang/set-language
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/get-allowed-actions-url
+   :logged-in
+   :authorized]
+  [request]
+  "Get allowed actions for logged in user response"
   (if-let [allowed-actions (get-allowed-actions-memo
                              request)]
     {:status (stc/ok)
@@ -137,9 +386,13 @@
      :headers {(eh/content-type) (mt/text-clojurescript)}
      :body {:status "error"}}))
 
-(defn get-chat-users
-  "Get chat users"
+(defmethod routing-fn
+  [rm/POST
+   rurls/get-chat-users-url
+   :logged-in
+   :authorized]
   [request]
+  "Get chat users"
   (let [all-users (mon/mongodb-find
                     user-cname)
         chat-role-doc (mon/mongodb-find-one
@@ -261,9 +514,13 @@
         websocket-output-fn))
    ))
 
-(defn chat-ws
-  "Connect to websocket"
+(defmethod routing-fn
+  [rm/ws-GET
+   rurls/chat-url
+   :logged-in
+   :authorized]
   [request]
+  "Connect to websocket"
   (try
     (let [websocket (:websocket request)
           {websocket-message :websocket-message
@@ -394,84 +651,16 @@
       (println
         (.getMessage
           e))
-     ))
- )
+     )))
 
-(def sign-up-roles
-  (atom []))
-
-(defn read-sign-up-role-ids
-  "Reads role ids for role names passed in vector parameter"
-  [role-names-vector]
-  (when (and role-names-vector
-             (vector?
-               role-names-vector))
-    (doseq [role-name role-names-vector]
-      (let [{role-id :_id} (mon/mongodb-find-one
-                            role-cname
-                            {:role-name role-name})]
-        (swap!
-          sign-up-roles
-          conj
-          role-id))
-     ))
- )
-
-(defn sign-up
-  "Sign up new user with given data"
+(defmethod routing-fn
+  [rm/DELETE
+   rurls/delete-entity-url
+   :logged-in
+   :authorized]
   [request]
-  (try
-    (let [request-body (:body
-                         request)
-          {entity-type :entity-type
-           entity :entity} request-body
-          entity (assoc
-                   entity
-                   :roles
-                   @sign-up-roles)]
-      (mon/mongodb-insert-one
-        entity-type
-        entity)
-      (let [{_id :_id} (mon/mongodb-find-one
-                         entity-type
-                         entity)]
-        (mon/mongodb-insert-one
-          "preferences"
-          {:user-id _id
-           :language "english"
-           :language-name "English"}))
-      {:status (stc/ok)
-       :headers {(eh/content-type) (mt/text-clojurescript)}
-       :body {:status "success"}})
-    (catch Exception ex
-      (println (.getMessage ex))
-      {:status (stc/internal-server-error)
-       :headers {(eh/content-type) (mt/text-clojurescript)}
-       :body {:status "error"
-              :message (.getMessage ex)}})
-   ))
-
-(defn not-found
-  "If request is not found"
-  []
-  {:status (stc/not-found)
-   :headers {(eh/content-type) (mt/text-clojurescript)}
-   :body {:status "error"
-          :error-message "404 not found"}})
-
-(defn not-authorized
-  "If reqeust is unauthorized"
-  []
-  {:status (stc/unauthorized)
-   :headers {(eh/content-type) (mt/text-clojurescript)}
-   :body {:status "success"}})
-
-(defn response-to-options
-  "If request is for OPTIONS"
-  [request]
-  {:status (stc/ok)
-   :headers {(eh/content-type) (mt/text-clojurescript)}
-   :body {:status "success"}})
+  (dao/delete-entity
+    request))
 
 (defn get-report
   "Generates pdf report and returns it's bytes in response body
@@ -695,9 +884,31 @@
      )
     @response-a))
 
-(defn read-preferences
-  "Read preferences from database and send them back to front end"
+(defmethod routing-fn
+  [rm/GET
+   rurls/reports-url
+   :logged-in
+   :authorized]
   [request]
+  (get-report
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/reports-url
+   :logged-in
+   :authorized]
+  [request]
+  (get-report
+    request))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/read-preferences-url
+   :logged-in
+   :authorized]
+  [request]
+  "Read preferences from database and send them back to front end"
   (let [preferences (ssn/get-preferences
                       request)]
     {:status (stc/ok)
@@ -705,9 +916,13 @@
      :body {:status "success"
             :preferences preferences}}))
 
-(defn save-preferences
-  "Saves preferences into database"
+(defmethod routing-fn
+  [rm/POST
+   rurls/save-preferences-url
+   :logged-in
+   :authorized]
   [request]
+  "Saves preferences into database"
   (try
     (let [preferences (get-in
                         request
@@ -740,6 +955,87 @@
        :body {:status "error"}}))
  )
 
+(def response-to-options
+     {:status (stc/ok)
+      :headers {(eh/content-type) (mt/text-clojurescript)}
+      :body {:status "success"}})
+
+(defmethod routing-fn
+  [rm/OPTIONS
+   "*"
+   :logged-in-or-out
+   :authorized]
+  [request]
+  "If request is for OPTIONS"
+  response-to-options)
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/login-url
+   :logged-out
+   :authorized]
+  [request]
+  (ssn/login-authentication
+    request))
+
+(def sign-up-roles
+  (atom []))
+
+(defn read-sign-up-role-ids
+  "Reads role ids for role names passed in vector parameter"
+  [role-names-vector]
+  (when (and role-names-vector
+             (vector?
+               role-names-vector))
+    (doseq [role-name role-names-vector]
+      (let [{role-id :_id} (mon/mongodb-find-one
+                            role-cname
+                            {:role-name role-name})]
+        (swap!
+          sign-up-roles
+          conj
+          role-id))
+     ))
+ )
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/sign-up-url
+   :logged-out
+   :authorized]
+  [request]
+  "Sign up new user with given data"
+  (try
+    (let [request-body (:body
+                         request)
+          {entity-type :entity-type
+           entity :entity} request-body
+          entity (assoc
+                   entity
+                   :roles
+                   @sign-up-roles)]
+      (mon/mongodb-insert-one
+        entity-type
+        entity)
+      (let [{_id :_id} (mon/mongodb-find-one
+                         entity-type
+                         entity)]
+        (mon/mongodb-insert-one
+          "preferences"
+          {:user-id _id
+           :language "english"
+           :language-name "English"}))
+      {:status (stc/ok)
+       :headers {(eh/content-type) (mt/text-clojurescript)}
+       :body {:status "success"}})
+    (catch Exception ex
+      (println (.getMessage ex))
+      {:status (stc/internal-server-error)
+       :headers {(eh/content-type) (mt/text-clojurescript)}
+       :body {:status "error"
+              :message (.getMessage ex)}})
+   ))
+
 (defn generate-reset-password-code
   "Generates reset password code"
   [email]
@@ -770,9 +1066,13 @@
      ))
  )
 
-(defn forgot-password
-  "Checks if user with sent email exists, and if it does sends reset password code to it"
+(defmethod routing-fn
+  [rm/POST
+   rurls/forgot-password-url
+   :logged-out
+   :authorized]
   [request]
+  "Checks if user with sent email exists, and if it does sends reset password code to it"
   (let [{{email :email} :body} request
         email (or email
                   "")
@@ -845,9 +1145,13 @@
       (not-found))
    ))
 
-(defn reset-password-code
-  "Check if reset password code exists"
+(defmethod routing-fn
+  [rm/POST
+   rurls/reset-password-code-url
+   :logged-out
+   :authorized]
   [request]
+  "Check if reset password code exists"
   (let [{{code :uuid} :body} request
         code (or code
                  "")
@@ -865,9 +1169,13 @@
       (not-found))
    ))
 
-(defn reset-password-final
-  "Checks if reset password code exists and if it does changes password"
+(defmethod routing-fn
+  [rm/POST
+   rurls/reset-password-final-url
+   :logged-out
+   :authorized]
   [request]
+  "Checks if reset password code exists and if it does changes password"
   (let [{{code :uuid
           new-password :new-password} :body} request
         code (or code
@@ -901,259 +1209,57 @@
       (not-found))
    ))
 
-(def logged-in-routing-set
-  (atom
-    #{{:method rm/POST
-       :uri rurls/am-i-logged-in-url
-       :action ssn/am-i-logged-in}
-      {:method rm/POST
-       :uri rurls/get-entities-url
-       :authorization "-read"
-       :entity true
-       :action dao/get-entities}
-      {:method rm/POST
-       :uri rurls/get-entity-url
-       :authorization "-read"
-       :entity true
-       :action dao/get-entity}
-      {:method rm/POST
-       :uri rurls/update-entity-url
-       :authorization "-update"
-       :entity true
-       :action dao/update-entity}
-      {:method rm/POST
-       :uri rurls/insert-entity-url
-       :authorization "-create"
-       :entity true
-       :action dao/insert-entity}
-      {:method rm/POST
-       :uri rurls/logout-url
-       :action ssn/logout}
-      {:method rm/POST
-       :uri rurls/get-labels-url
-       :action lang/get-labels}
-      {:method rm/POST
-       :uri rurls/set-language-url
-       :action lang/set-language}
-      {:method rm/POST
-       :uri rurls/get-allowed-actions-url
-       :action get-allowed-actions-response}
-      {:method rm/POST
-       :uri rurls/get-chat-users-url
-       :authorization fns/chat
-       :action get-chat-users}
-      {:method rm/ws-GET
-       :uri rurls/chat-url
-       :authorization fns/chat
-       :action chat-ws}
-      {:method rm/DELETE
-       :uri rurls/delete-entity-url
-       :authorization "-delete"
-       :entity true
-       :action dao/delete-entity}
-      {:method rm/GET
-       :uri rurls/reports-url
-       :authorization fns/reports
-       :action get-report}
-      {:method rm/POST
-       :uri rurls/reports-url
-       :authorization fns/reports
-       :action get-report}
-      {:method rm/POST
-       :uri rurls/read-preferences-url
-       :action read-preferences}
-      {:method rm/POST
-       :uri rurls/save-preferences-url
-       :action save-preferences}
-      }))
-
-(def logged-out-routing-set
-  (atom
-    #{{:method rm/OPTIONS
-       :uri "*"
-       :action response-to-options}
-      {:method rm/POST
-       :uri rurls/login-url
-       :action ssn/login-authentication}
-      {:method rm/POST
-       :uri rurls/sign-up-url
-       :action sign-up}
-      {:method rm/POST
-       :uri rurls/am-i-logged-in-url
-       :action ssn/am-i-logged-in}
-      {:method rm/POST
-       :uri rurls/get-labels-url
-       :action lang/get-labels}
-      {:method rm/POST
-       :uri rurls/forgot-password-url
-       :action forgot-password}
-      {:method rm/POST
-       :uri rurls/reset-password-code-url
-       :action reset-password-code}
-      {:method rm/POST
-       :uri rurls/reset-password-final-url
-       :action reset-password-final}
-      }))
-
-(defn conj-new-routes
-  "Adds new routes"
-  [routing-set
-   new-routes]
-  (swap!
-    routing-set
-    (fn [value-a
-         param]
-      (apply
-        conj
-        value-a
-        param))
-    new-routes))
-
-(defn add-new-routes
-  "Adds routes particular for this project"
-  [additional-logged-in-routing-set
-   additional-logged-out-routing-set]
-  (conj-new-routes
-    logged-in-routing-set
-    additional-logged-in-routing-set)
-  (conj-new-routes
-    logged-out-routing-set
-    additional-logged-out-routing-set))
-
-(defn print-request
-  "Prints request map"
+(defmethod routing-fn
+  ["*"
+   "*"
+   :logged-in
+   :not-authorized]
   [request]
-  (let [ws-content-length (get-in
-                            request
-                            [:websocket
-                             :websocket-message-length])
-        ws-content-length (if ws-content-length
-                            ws-content-length
-                            (when-let [websocket-message (get-in
-                                                           request
-                                                           [:websocket
-                                                            :websocket-message])]
-                              (count
-                                websocket-message))
-                           )
-        content-length (:content-length request)
-        content-length (if (and content-length
-                                (string?
-                                  content-length))
-                         (read-string
-                           content-length)
-                         (when-let [body (:body
-                                           request)]
-                           (count
-                             body))
-                        )
-        result (atom nil)]
-    (when (or (and ws-content-length
-                   (< ws-content-length
-                      300))
-              (and content-length
-                   (< content-length
-                      300))
-              (and (nil?
-                     ws-content-length)
-                   (nil?
-                     content-length))
-           )
-      (reset!
-        result
-        request))
-    (when (and ws-content-length
-               (<= 300
-                   ws-content-length))
-      (reset!
-        result
-        (update-in
-          request
-          [:websocket]
-          dissoc
-          :websocket-message))
-     )
-    (when (and content-length
-               (<= 300
-                   content-length))
-      (reset!
-        result
-        (dissoc
-          request
-          :body))
-     )
-   (println
-     (str
-       "\n"
-       @result))
-   @result))
+  "If request is unauthorized"
+  {:status (stc/unauthorized)
+   :headers {(eh/content-type) (mt/text-clojurescript)}
+   :body {:status "success"}})
 
-(defn routing-fn
-  "Routing function that selects right route"
+(defmethod routing-fn
+  :default
   [request]
-  (let [request-method (:request-method request)
-        request-uri (:request-uri request)
-        is-logged-in (ssn/am-i-logged-in-fn
-                       request)
-        routing-set (if is-logged-in
-                      @logged-in-routing-set
-                      @logged-out-routing-set)
-        request-action (clojure.set/select
-                         (fn [{method :method
-                               uri :uri}]
-                           (or (and (= request-method
-                                       method)
-                                    (= request-uri
-                                       uri))
-                               (= request-method
-                                  method
-                                  rm/OPTIONS))
-                          )
-                         routing-set)
-        requested-element (first
-                            request-action)]
-    (when-not (nil?
-                requested-element)
-      (let [authorized-actions (get-allowed-actions-memo
-                                 request)
-            requested-authorization (:authorization requested-element)
-            is-entity (:entity requested-element)
-            request-body (:body
-                           request)
-            requested-authorization (if is-entity
-                                      (str
-                                        (:entity-type request-body)
-                                        requested-authorization)
-                                      requested-authorization)]
-        (if (or (nil?
-                  requested-authorization)
-                (contains?
-                  authorized-actions
-                  requested-authorization))
-          (let [action-fn (:action requested-element)
-                action-uri (:uri requested-element)
-                response (if (fn?
-                               action-fn)
-                           (action-fn
-                             request)
-                           action-fn)]
-            (if (and is-logged-in
-                     (not= action-uri
-                           "/logout"))
-              (ssn/set-session-cookies
-                request
-                response)
-              response))
-          (not-authorized))
-       ))
+  "Default response is nil"
+  nil)
+
+(defmulti update-session
+  (fn [request]
+    (let [is-logged-in (ssn/am-i-logged-in-fn
+                         request)
+          request-uri (:request-uri request)]
+      (if (and is-logged-in
+               (not= request-uri
+                     rurls/logout-url))
+        :update
+        :no-update))
    ))
+
+(defmethod update-session
+  :update
+  [request]
+  (let [response (routing-fn
+                   request)]
+    (ssn/set-session-cookies
+      request
+      response))
+ )
+
+(defmethod update-session
+  :no-update
+  [request]
+  (routing-fn
+    request))
 
 (defn routing
   "Routing function"
   [request]
   (print-request
     request)
-  (let [response (routing-fn
+  (let [response (update-session
                    request)]
     (if (nil?
           response)
