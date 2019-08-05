@@ -199,8 +199,10 @@
 (deftest test-get-allowed-actions-response
   (testing "Test get allowed actions response"
     
-    (let [request {:cookie "session=test-uuid; session-visible=exists"}
-          response (get-allowed-actions-response
+    (let [request {:cookie "session=test-uuid; session-visible=exists"
+                   :request-method rm/POST
+                   :request-uri rurls/get-allowed-actions-url}
+          response (routing-fn
                      request)]
       (is
         (= response
@@ -217,18 +219,20 @@
             }))
      )
     
-    (let [request {:cookie "session=not-existing-uuid; session-visible=exists"}
-          response (get-allowed-actions-response
+    (let [request {:cookie "session=not-existing-uuid; session-visible=exists"
+                   :request-method rm/POST
+                   :request-uri rurls/get-allowed-actions-url}
+          response (routing-fn
                      request)]
       (is
-        (= response
-           {:status (stc/ok)
-            :headers {(eh/content-type) (mt/text-clojurescript)}
-            :body {:status "error"}}))
+        (nil?
+          response))
      )
     
-    (let [request {:cookie "long-session=test-long-session-uuid; long-session-visible=exists"}
-          response (get-allowed-actions-response
+    (let [request {:cookie "long-session=test-long-session-uuid; long-session-visible=exists"
+                   :request-method rm/POST
+                   :request-uri rurls/get-allowed-actions-url}
+          response (routing-fn
                      request)]
       (is
         (= response
@@ -241,14 +245,14 @@
             }))
      )
     
-    (let [request {:cookie "long-session=not-existing-long-session-uuid; long-session-visible=exists"}
-          response (get-allowed-actions-response
+    (let [request {:cookie "long-session=not-existing-long-session-uuid; long-session-visible=exists"
+                   :request-method rm/POST
+                   :request-uri rurls/get-allowed-actions-url}
+          response (routing-fn
                      request)]
       (is
-        (= response
-           {:status (stc/ok)
-            :headers {(eh/content-type) (mt/text-clojurescript)}
-            :body {:status "error"}}))
+        (nil?
+          response))
      )
     
    ))
@@ -256,8 +260,10 @@
 (deftest test-get-chat-users
   (testing "Test get chat users"
    
-    (let [chat-users-response (get-chat-users
-                                {})
+    (let [chat-users-response (routing-fn
+                                {:cookie "long-session=test-long-session-uuid; long-session-visible=exists"
+                                 :request-method rm/POST
+                                 :request-uri rurls/get-chat-users-url})
           chat-users (into
                        #{}
                        (get-in
@@ -270,6 +276,7 @@
                                 assoc
                                 :data chat-users)]
       
+      
       (is
         (= chat-users-response
            {:status (stc/ok)
@@ -278,15 +285,6 @@
                    :data #{{:username "test-admin"}
                            {:username "test-guest"}}}
             }))
-      
-      (is
-        (= chat-users-response
-           {:status (stc/ok)
-            :headers {(eh/content-type) (mt/text-clojurescript)}
-            :body {:status "success"
-                   :data #{{:username "test-guest"}
-                           {:username "test-admin"}}
-                   }}))
       
      )
    
@@ -429,8 +427,11 @@
                                  param2]]
                            "quasi function")]
       
-      (chat-ws
-        {:websocket
+      (routing-fn
+        {:request-method rm/ws-GET
+         :request-uri rurls/chat-url
+         :cookie "long-session=test-long-session-uuid; long-session-visible=exists"
+         :websocket
           {:websocket-message
             (str
               {:action wsra/establish-connection-action
@@ -444,8 +445,11 @@
               :websocket-socket quasi-socket
               :websocket-output-fn quasi-function}}))
       
-      (chat-ws
-        {:websocket
+      (routing-fn
+        {:request-method rm/ws-GET
+         :request-uri rurls/chat-url
+         :cookie "long-session=test-long-session-uuid; long-session-visible=exists"
+         :websocket
           {:websocket-message
             (str
               {:action wsra/establish-connection-action
@@ -462,8 +466,11 @@
               :websocket-socket quasi-socket
               :websocket-output-fn quasi-function}}))
       
-      (let [save-message (chat-ws
-                           {:websocket
+      (let [save-message (routing-fn
+                           {:request-method rm/ws-GET
+                            :request-uri rurls/chat-url
+                            :cookie "long-session=test-long-session-uuid; long-session-visible=exists"
+                            :websocket
                              {:websocket-message
                                (str
                                  {:action wsra/send-chat-message-action
@@ -505,8 +512,11 @@
        
        )
       
-      (chat-ws
-        {:websocket
+      (routing-fn
+        {:request-method rm/ws-GET
+         :request-uri rurls/chat-url
+         :cookie "long-session=test-long-session-uuid; long-session-visible=exists"
+         :websocket
           {:websocket-message
             (str
               {:action wsra/close-connection-action
@@ -514,8 +524,11 @@
            :websocket-socket quasi-socket
            :websocket-output-fn quasi-function}})
       
-      (chat-ws
-        {:websocket
+      (routing-fn
+        {:request-method rm/ws-GET
+         :request-uri rurls/chat-url
+         :cookie "long-session=test-long-session-uuid; long-session-visible=exists"
+         :websocket
           {:websocket-message
             (str
               {:action wsra/close-connection-action
@@ -604,8 +617,10 @@
        )
       
       (is
-        (= (sign-up
-             {:body
+        (= (routing-fn
+             {:request-method rm/POST
+              :request-uri rurls/sign-up-url
+              :body
                {:entity-type "user"
                 :entity new-user}})
            {:status (stc/ok)
@@ -617,8 +632,10 @@
           "user"
           new-user))
       
-      (let [signup-response (sign-up
-                              {:body
+      (let [signup-response (routing-fn
+                              {:request-method rm/POST
+                               :request-uri rurls/sign-up-url
+                               :body
                                 {:entity-type "user"
                                  :entity new-user-same-username}})]
         (is
@@ -643,8 +660,10 @@
          )
        )
       
-      (let [signup-response (sign-up
-                              {:body
+      (let [signup-response (routing-fn
+                              {:request-method rm/POST
+                               :request-uri rurls/sign-up-url
+                               :body
                                 {:entity-type "user"
                                  :entity new-user-same-email}})]
         
@@ -690,7 +709,10 @@
   (testing "Test not authorized"
     
     (is
-      (= (not-authorized)
+      (= (routing-fn
+           {:cookie "long-session=test-long-session-uuid; long-session-visible=exists"
+            :request-method "*"
+            :request-uri rurls/get-entities-url})
          {:status (stc/unauthorized)
           :headers {(eh/content-type) (mt/text-clojurescript)}
           :body {:status "success"}}))
@@ -701,8 +723,9 @@
   (testing "Test response to options"
     
     (is
-      (= (response-to-options
-           {})
+      (= (routing-fn
+           {:request-method rm/OPTIONS
+            :request-uri "*"})
          {:status (stc/ok)
           :headers {(eh/content-type) (mt/text-clojurescript)}
           :body {:status "success"}}))
@@ -883,22 +906,22 @@
 (deftest test-read-preferences
   (testing "Test read preferences"
     
-    (let [request nil
-          result (read-preferences
+    (let [request {:request-method rm/POST
+                   :request-uri rurls/read-preferences-url}
+          result (routing-fn
                    request)]
       
       (is 
-        (= result
-           {:status (stc/ok)
-            :headers {"Content-Type" "text/clojurescript"}
-            :body {:status "success"
-                   :preferences nil}})
+        (nil?
+          result)
        )
       
      )
     
-    (let [request {:cookie "session=test-uuid; session-visible=exists"}
-          result (read-preferences
+    (let [request {:cookie "session=test-uuid; session-visible=exists"
+                   :request-method rm/POST
+                   :request-uri rurls/read-preferences-url}
+          result (routing-fn
                    request)]
       
       (is
@@ -936,22 +959,23 @@
 (deftest test-save-preferences
   (testing "Test save preferences"
     
-    (let [request nil
-          result (save-preferences
+    (let [request {:request-method rm/POST
+                   :request-uri rurls/save-preferences-url}
+          result (routing-fn
                    request)]
       
       (is
-        (= result
-           {:status (stc/internal-server-error)
-            :headers {"Content-Type" "text/clojurescript"}
-            :body {:status "error"}})
+        (nil?
+          result)
        )
       
      )
     
     (let [request {:cookie "session=test-uuid; session-visible=exists"
-                   :body {:preferences {:test-preferences 1}}}
-          result (save-preferences
+                   :body {:preferences {:test-preferences 1}}
+                   :request-method rm/POST
+                   :request-uri rurls/save-preferences-url}
+          result (routing-fn
                    request)]
       
       (is
@@ -968,8 +992,9 @@
 (deftest test-forgot-password-reset-password-code-reset-password-final
   (testing "Test forgot password, reset password code and reset password final"
     
-    (let [request nil 
-          result (forgot-password
+    (let [request {:request-method rm/POST
+                   :request-uri rurls/forgot-password-url} 
+          result (routing-fn
                    request)]
       
       (is
@@ -980,8 +1005,10 @@
      )
     
     (let [request {:body {:email "test.123@123"}
-                   :accept-language "sr,en;q=0.5"}
-          result (forgot-password
+                   :accept-language "sr,en;q=0.5"
+                   :request-method rm/POST
+                   :request-uri rurls/forgot-password-url}
+          result (routing-fn
                    request)]
       
       (is
@@ -993,8 +1020,9 @@
       
      )
     
-    (let [request nil 
-          result (reset-password-code
+    (let [request {:request-method rm/POST
+                   :request-uri rurls/reset-password-code-url} 
+          result (routing-fn
                    request)]
       
       (is
@@ -1009,8 +1037,10 @@
                                   {:email "test.123@123"})
           code (:uuid reset-password-db-obj)
           request {:body {:uuid code}
-                   :accept-language "sr,en;q=0.5"}
-          result (reset-password-code
+                   :accept-language "sr,en;q=0.5"
+                   :request-method rm/POST
+                   :request-uri rurls/reset-password-code-url}
+          result (routing-fn
                    request)]
       
       (is
@@ -1024,8 +1054,9 @@
       
      )
     
-    (let [request nil 
-          result (reset-password-final
+    (let [request {:request-method rm/POST
+                   :request-uri rurls/reset-password-final-url} 
+          result (routing-fn
                    request)]
       
       (is
@@ -1042,8 +1073,10 @@
           request {:body {:uuid code
                           :new-password (utils/sha256
                                           "123")}
-                   :accept-language "sr,en;q=0.5"}
-          result (reset-password-final
+                   :accept-language "sr,en;q=0.5"
+                   :request-method rm/POST
+                   :request-uri rurls/reset-password-final-url}
+          result (routing-fn
                    request)]
       
       (is
@@ -1062,75 +1095,6 @@
       
      )
     
-   ))
-
-(deftest test-conj-new-routes
-  (testing "Test conj new routes"
-    
-    (let [test-request-method "TEST_REQUEST_METHOD"
-          test-uri "/test-uri"
-          quasi-function (fn [] "quasi function")
-          logged-out-routing-set-copy (atom
-                                        @logged-out-routing-set)]
-      
-      (conj-new-routes
-        logged-out-routing-set
-        #{{:method test-request-method
-           :uri test-uri
-           :action quasi-function}})
-      
-      (is
-        (= @logged-out-routing-set
-           (conj
-             @logged-out-routing-set-copy
-             {:method test-request-method
-              :uri test-uri
-              :action quasi-function}))
-       )
-      
-     )
-     
-   ))
-
-(deftest test-add-new-routes
-  (testing "Test add new routes"
-    
-    (let [test-request-method "TEST_REQUEST_METHOD"
-          test-uri "/test-uri"
-          quasi-function (fn [] "quasi function")
-          logged-in-routing-set-copy (atom
-                                       @logged-in-routing-set)
-          logged-out-routing-set-copy (atom
-                                        @logged-out-routing-set)]
-      
-      (add-new-routes
-        #{{:method test-request-method
-           :uri test-uri
-           :action quasi-function}}
-        #{{:method test-request-method
-           :uri test-uri
-           :action quasi-function}})
-      
-      (is
-        (= @logged-in-routing-set
-           (conj
-             @logged-in-routing-set-copy
-             {:method test-request-method
-              :uri test-uri
-              :action quasi-function}))
-       )
-      
-      (is
-        (= @logged-out-routing-set
-           (conj
-             @logged-out-routing-set-copy
-             {:method test-request-method
-              :uri test-uri
-              :action quasi-function}))
-       )
-      
-     )
-     
    ))
 
 (deftest test-print-request
@@ -1215,18 +1179,18 @@
          )
        )
       
-      (let [request {:request-method rm/OPTIONS}
+      (let [request {:request-method rm/OPTIONS
+                     :request-uri "*"}
             response (routing
                        request)]
         (is
           (= response
-             (response-to-options
-               request))
+             response-to-options)
          )
        )
       
       (let [request {:request-method rm/POST
-                         :request-uri rurls/login-url}
+                     :request-uri rurls/login-url}
             response (routing
                        request)]
         (is
