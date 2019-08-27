@@ -140,5 +140,40 @@
 		   { :code 89	:english "Calling . . ." :serbian	"Позивање . . ." }
 		   { :code 90	:english "Answering . . ." :serbian	"Јављање . . ." }
 		   { :code 91	:english "Connected." :serbian	"Повезан." }
+		   { :code 92 :english "Calendar" :serbian "Календар" }
+		   { :code 93 :english "January" :serbian "Јануар" }
+		   { :code 94 :english "February" :serbian "Фебруар" }
+		   { :code 95 :english "March" :serbian "Март" }
+		   { :code 96 :english "April" :serbian "Април" }
+		   { :code 97 :english "May" :serbian "Мај" }
+		   { :code 98 :english "Jun" :serbian "Јун" }
+		   { :code 99 :english "July" :serbian "Јул" }
+		   { :code 100 :english "August" :serbian "Август" }
+		   { :code 101 :english "September" :serbian "Септембар" }
+		   { :code 102 :english "October" :serbian "Окробар" }
+		   { :code 103 :english "November" :serbian "Новембар" }
+		   { :code 104 :english "December" :serbian "Децембар" }
+		   { :code 105 :english "Monday" :serbian "Понедељак" }
+		   { :code 106 :english "Tuesday" :serbian "Уторак" }
+		   { :code 107 :english "Wednesday" :serbian "Среда" }
+		   { :code 108 :english "Thursday" :serbian "Четвртак" }
+		   { :code 109 :english "Friday" :serbian "Петак" }
+		   { :code 110 :english "Saturday" :serbian "Субота" }
+		   { :code 111 :english "Sunday" :serbian "Недеља" }
+		   { :code 112 :english "Create item" :serbian "Креирај ставку" }
+		   { :code 113 :english "Start date" :serbian "Почетни датум" }
+		   { :code 114 :english "End date" :serbian "Крајњи датум" }
+		   { :code 115 :english "Duration" :serbian "Трајање" }
+		   { :code 116 :english "Type" :serbian "Тип" }
+		   { :code 117 :english "Start time" :serbian "Почетно време" }
+		   { :code 118 :english "End time" :serbian "Крајње време" }
+		   { :code 119
+		     :english "Start date is after end date."
+		     :serbian "Почетни датум је након крајњег датума." }
+		   { :code 120 :english "Description" :serbian "Опис" }
+		   { :code 121
+		     :english "Item's date and time is already taken."
+		     :serbian "Датум и време ставке је заузето." }
+     { :code 122 :english "Name" :serbian "Назив" }
      ]))
 

@@ -6,6 +6,7 @@
             [common-middle.role-names :refer [user-admin-rname
                                               language-admin-rname
                                               role-admin-rname
+                                              item-admin-rname
                                               chat-rname
                                               reports-rname]]))
 
@@ -24,6 +25,10 @@
                         (mon/mongodb-find-one
                           role-cname
                           {:role-name role-admin-rname}))
+        item-admin-id (:_id
+                        (mon/mongodb-find-one
+                          role-cname
+                          {:role-name item-admin-rname}))
         chat-id (:_id
                   (mon/mongodb-find-one
                     role-cname
@@ -47,6 +52,7 @@
        :roles [user-admin-id
                language-admin-id
                role-admin-id
+               item-admin-id
                chat-id
                reports-id]})
     (mon/mongodb-insert-one
@@ -54,7 +60,8 @@
       {:username "guest"
        :email "markovic.vladimir86.no.reply@gmail.com"
        :password guest-encrypted-password
-       :roles [chat-id
+       :roles [item-admin-id
+               chat-id
                reports-id]}))
  )
 

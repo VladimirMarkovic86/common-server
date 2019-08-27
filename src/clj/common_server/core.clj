@@ -18,6 +18,7 @@
             [common-middle.ws-request-actions :as wsra]
             [common-middle.collection-names :refer [user-cname
                                                     role-cname
+                                                    item-cname
                                                     chat-cname
                                                     reset-password-cname
                                                     session-cname
@@ -1208,6 +1209,137 @@
        )
       (not-found))
    ))
+
+(defn are-usernames-matching
+  "Check if username from request body matches username from session"
+  [request]
+  (let [request-body (:body request)
+        session-obj (ssn/get-session-obj
+                      request)]
+    (= (:username request-body)
+       (:username session-obj))
+   ))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/get-items-url
+   :logged-in
+   :authorized]
+  [request]
+  "Returns items for particular month"
+  (if (are-usernames-matching
+        request)
+    (dao/get-entities
+      request)
+    {:status (stc/unauthorized)
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"}}))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/get-item-url
+   :logged-in
+   :authorized]
+  [request]
+  "Returns items for particular month"
+  (if (are-usernames-matching
+        request)
+    (dao/get-entity
+      request)
+    {:status (stc/unauthorized)
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"}}))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/insert-item-url
+   :logged-in
+   :authorized]
+  [request]
+  "Inserts new item into database"
+  (if (are-usernames-matching
+        request)
+    (dao/insert-entity
+      request)
+    {:status (stc/unauthorized)
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"}}))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/update-item-url
+   :logged-in
+   :authorized]
+  [request]
+  "Updates existing item in database"
+  (if (are-usernames-matching
+        request)
+    (dao/update-entity
+      request)
+    {:status (stc/unauthorized)
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"}}))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/delete-item-url
+   :logged-in
+   :authorized]
+  [request]
+  "Deletes existing item from database"
+  (if (are-usernames-matching
+        request)
+    (dao/delete-entity
+      request)
+    {:status (stc/unauthorized)
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"}}))
+
+(defmethod routing-fn
+  [rm/POST
+   rurls/is-item-datetime-taken-url
+   :logged-in
+   :authorized]
+  [request]
+  "Checks if items date and time is already taken"
+  (if (are-usernames-matching
+        request)
+    (let [{start-datetime :start-datetime
+           end-datetime :end-datetime
+           username :username
+           _id :_id} (:body request)
+          and-filter-vector [{:$or
+                               [{:$and
+                                  [{:start-date {:$gte start-datetime}}
+                                   {:start-date {:$lte end-datetime}}]
+                                 }
+                                {:$and [{:end-date {:$gte start-datetime}}
+                                        {:end-date {:$lte end-datetime}}]
+                                 }
+                                {:$and [{:start-date {:$lte start-datetime}}
+                                        {:end-date {:$gte end-datetime}}]
+                                 }]}
+                             {:username username}]
+          and-filter-vector (if _id
+                              (conj
+                                and-filter-vector
+                                {:_id {:$ne (mon/object-id
+                                              _id)}})
+                              and-filter-vector)
+          existing-items (mon/mongodb-find-one
+                           item-cname
+                           {:$and
+                             and-filter-vector})]
+      {:status (stc/ok)
+       :headers {(eh/content-type) (mt/text-clojurescript)}
+       :body {:status "success"
+              :is-already-taken (not
+                                  (nil?
+                                    existing-items))}}
+     )
+    {:status (stc/unauthorized)
+     :headers {(eh/content-type) (mt/text-clojurescript)}
+     :body {:status "success"}}))
 
 (defmethod routing-fn
   ["*"

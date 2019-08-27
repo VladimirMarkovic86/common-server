@@ -7,6 +7,8 @@
                                               language-mod-rname
                                               role-admin-rname
                                               role-mod-rname
+                                              item-admin-rname
+                                              item-mod-rname
                                               chat-rname
                                               reports-rname]]
             [common-middle.functionalities :as fns]))
@@ -40,6 +42,14 @@
      {:role-name role-mod-rname
       :functionalities [fns/role-read
                         fns/role-update]}
+     {:role-name item-admin-rname
+      :functionalities [fns/item-create
+                        fns/item-read
+                        fns/item-update
+                        fns/item-delete]}
+     {:role-name item-mod-rname
+      :functionalities [fns/item-read
+                        fns/item-update]}
      {:role-name chat-rname
       :functionalities [fns/chat]}
      {:role-name reports-rname
